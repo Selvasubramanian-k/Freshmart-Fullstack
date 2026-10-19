@@ -4,7 +4,7 @@
 // badge (optional) -> chinna offer tag navbar category mela kaattum. Venaam na andha line la `badge` remove pannunga.
 export const CATEGORIES = [
   { id: 'all',       label: 'All',            icon: 'shopping-cart' },
-  { id: 'dairy',     label: 'Dairy',          icon: 'milk', title: 'Dairy & Eggs' },
+  { id: 'dairy',     label: 'Dairy & Eggs',          icon: 'milk', title: 'Dairy & Eggs' },
   { id: 'fruits',    label: 'Fruits & Veg',   icon: 'apple', badge: '30% OFF', title: 'Fruits & Vegetables' },
   { id: 'meat',      label: 'Meat & Fish',    icon: 'fish', title: 'Meat & Fish' },
   { id: 'snacks',    label: 'Snacks',         icon: 'popcorn', badge: 'NEW', title: 'Snacks & Munchies' },
