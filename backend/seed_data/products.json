@@ -1,0 +1,1542 @@
+[
+ {
+  "pid": 1,
+  "name": "Red Apples",
+  "unit": "1 kg",
+  "price": 120,
+  "mrp": 150,
+  "category": "fruits",
+  "tag": "popular",
+  "image_url": "asset:apple.jpg"
+ },
+ {
+  "pid": 2,
+  "name": "Banana",
+  "unit": "1 dozen",
+  "price": 60,
+  "mrp": null,
+  "category": "fruits",
+  "tag": "organic",
+  "image_url": "asset:banana.jpg"
+ },
+ {
+  "pid": 3,
+  "name": "Orange",
+  "unit": "1 kg",
+  "price": 80,
+  "mrp": 100,
+  "category": "fruits",
+  "tag": "popular",
+  "image_url": "asset:orange.jpg"
+ },
+ {
+  "pid": 4,
+  "name": "Pineapple",
+  "unit": "1 pc",
+  "price": 90,
+  "mrp": 110,
+  "category": "fruits",
+  "tag": "new",
+  "image_url": "asset:Pineapple.jpeg"
+ },
+ {
+  "pid": 5,
+  "name": "Carrot",
+  "unit": "500 g",
+  "price": 40,
+  "mrp": 50,
+  "category": "fruits",
+  "tag": "organic",
+  "image_url": "asset:carrot.png"
+ },
+ {
+  "pid": 6,
+  "name": "Beetroot",
+  "unit": "500 g",
+  "price": 35,
+  "mrp": null,
+  "category": "fruits",
+  "tag": "organic",
+  "image_url": "asset:Beetroot.jpeg"
+ },
+ {
+  "pid": 7,
+  "name": "Potato",
+  "unit": "1 kg",
+  "price": 30,
+  "mrp": 40,
+  "category": "fruits",
+  "tag": "popular",
+  "image_url": "asset:Fresh-Potato.jpeg"
+ },
+ {
+  "pid": 8,
+  "name": "Tomato",
+  "unit": "500 g",
+  "price": 25,
+  "mrp": 35,
+  "category": "fruits",
+  "tag": "sale",
+  "image_url": "asset:Tomato-Local.png"
+ },
+ {
+  "pid": 9,
+  "name": "Brinjal",
+  "unit": "500 g",
+  "price": 30,
+  "mrp": null,
+  "category": "fruits",
+  "tag": "new",
+  "image_url": "asset:brinjal.jpg"
+ },
+ {
+  "pid": 47,
+  "name": "Onion",
+  "unit": "1 kg",
+  "price": 45,
+  "mrp": 55,
+  "category": "fruits",
+  "tag": "popular",
+  "image_url": "asset:Onion.jpg"
+ },
+ {
+  "pid": 48,
+  "name": "Watermelon",
+  "unit": "1 pc",
+  "price": 70,
+  "mrp": null,
+  "category": "fruits",
+  "tag": "new",
+  "image_url": "asset:Watermelon-Kiran-Tarbooj-.jpg"
+ },
+ {
+  "pid": 49,
+  "name": "Lemon",
+  "unit": "250 g",
+  "price": 25,
+  "mrp": null,
+  "category": "fruits",
+  "tag": "popular",
+  "image_url": "asset:lemonf.jpg"
+ },
+ {
+  "pid": 10,
+  "name": "Fish (Rohu)",
+  "unit": "500 g",
+  "price": 180,
+  "mrp": 220,
+  "category": "meat",
+  "tag": "popular",
+  "image_url": "asset:fish.jpg"
+ },
+ {
+  "pid": 11,
+  "name": "Chicken Boneless",
+  "unit": "500 g",
+  "price": 220,
+  "mrp": 260,
+  "category": "meat",
+  "tag": "sale",
+  "image_url": "asset:chicken.jpg"
+ },
+ {
+  "pid": 12,
+  "name": "Chicken Liver",
+  "unit": "250 g",
+  "price": 90,
+  "mrp": 110,
+  "category": "meat",
+  "tag": "new",
+  "image_url": "asset:liver.jpg"
+ },
+ {
+  "pid": 13,
+  "name": "Mutton",
+  "unit": "500 g",
+  "price": 450,
+  "mrp": 500,
+  "category": "meat",
+  "tag": "popular",
+  "image_url": "asset:mutton.jpg"
+ },
+ {
+  "pid": 14,
+  "name": "Lays Classic",
+  "unit": "100 g",
+  "price": 20,
+  "mrp": null,
+  "category": "snacks",
+  "tag": "popular",
+  "image_url": "asset:lays.jpeg"
+ },
+ {
+  "pid": 15,
+  "name": "Bingo Mad Angles",
+  "unit": "90 g",
+  "price": 20,
+  "mrp": 25,
+  "category": "snacks",
+  "tag": "sale",
+  "image_url": "asset:bingoo.jpg"
+ },
+ {
+  "pid": 16,
+  "name": "Soft Drinks",
+  "unit": "500 ml",
+  "price": 40,
+  "mrp": 50,
+  "category": "snacks",
+  "tag": "popular",
+  "image_url": "asset:sprite.jpg"
+ },
+ {
+  "pid": 17,
+  "name": "Cookies",
+  "unit": "200 g",
+  "price": 30,
+  "mrp": null,
+  "category": "snacks",
+  "tag": "new",
+  "image_url": "asset:cookies.jpg"
+ },
+ {
+  "pid": 50,
+  "name": "Ice Cream",
+  "unit": "500 ml",
+  "price": 150,
+  "mrp": 180,
+  "category": "snacks",
+  "tag": "popular",
+  "image_url": "asset:Icecream.jpg"
+ },
+ {
+  "pid": 51,
+  "name": "Masala Mixture",
+  "unit": "200 g",
+  "price": 45,
+  "mrp": null,
+  "category": "snacks",
+  "tag": "popular",
+  "image_url": "asset:muruku.jpg"
+ },
+ {
+  "pid": 18,
+  "name": "Pedigree Dog Food",
+  "unit": "1 kg",
+  "price": 350,
+  "mrp": 400,
+  "category": "petcare",
+  "tag": "popular",
+  "image_url": "asset:pedi.jpg"
+ },
+ {
+  "pid": 19,
+  "name": "Pet Biscuits",
+  "unit": "500 g",
+  "price": 150,
+  "mrp": 180,
+  "category": "petcare",
+  "tag": "sale",
+  "image_url": "asset:petbiscut.jpg"
+ },
+ {
+  "pid": 20,
+  "name": "Pet Shampoo",
+  "unit": "200 ml",
+  "price": 250,
+  "mrp": 300,
+  "category": "petcare",
+  "tag": "new",
+  "image_url": "asset:petshamboo.jpg"
+ },
+ {
+  "pid": 21,
+  "name": "Pet Collar",
+  "unit": "1 pc",
+  "price": 199,
+  "mrp": 250,
+  "category": "petcare",
+  "tag": "popular",
+  "image_url": "asset:petcolloar.jpg"
+ },
+ {
+  "pid": 22,
+  "name": "Full Cream Milk",
+  "unit": "1 L",
+  "price": 68,
+  "mrp": null,
+  "category": "dairy",
+  "tag": "popular",
+  "image_url": "asset:milk.jpg"
+ },
+ {
+  "pid": 23,
+  "name": "Butter",
+  "unit": "100 g",
+  "price": 55,
+  "mrp": 65,
+  "category": "dairy",
+  "tag": "sale",
+  "image_url": "asset:butter.jpeg"
+ },
+ {
+  "pid": 24,
+  "name": "Ghee",
+  "unit": "500 ml",
+  "price": 350,
+  "mrp": 400,
+  "category": "dairy",
+  "tag": "popular",
+  "image_url": "asset:ghee.jpg"
+ },
+ {
+  "pid": 25,
+  "name": "Sembal (Curd)",
+  "unit": "500 g",
+  "price": 40,
+  "mrp": null,
+  "category": "dairy",
+  "tag": "organic",
+  "image_url": "asset:curd.jpg"
+ },
+ {
+  "pid": 26,
+  "name": "Egg (Farm Fresh)",
+  "unit": "12 pcs",
+  "price": 90,
+  "mrp": 110,
+  "category": "dairy",
+  "tag": "popular",
+  "image_url": "asset:eggs.jpg"
+ },
+ {
+  "pid": 46,
+  "name": "Paneer",
+  "unit": "200 g",
+  "price": 85,
+  "mrp": null,
+  "category": "dairy",
+  "tag": "new",
+  "image_url": "asset:panneer.jpg"
+ },
+ {
+  "pid": 27,
+  "name": "Mango Juice",
+  "unit": "1 L",
+  "price": 60,
+  "mrp": 80,
+  "category": "beverage",
+  "tag": "popular",
+  "image_url": "asset:mango.png"
+ },
+ {
+  "pid": 28,
+  "name": "Choco Milk",
+  "unit": "500 ml",
+  "price": 45,
+  "mrp": 55,
+  "category": "beverage",
+  "tag": "popular",
+  "image_url": "asset:chocomilk.jpg"
+ },
+ {
+  "pid": 29,
+  "name": "Tea Powder",
+  "unit": "250 g",
+  "price": 120,
+  "mrp": 135,
+  "category": "beverage",
+  "tag": "popular",
+  "image_url": "asset:3roses.jpg"
+ },
+ {
+  "pid": 30,
+  "name": "Coffee Powder",
+  "unit": "200 g",
+  "price": 180,
+  "mrp": 200,
+  "category": "beverage",
+  "tag": "popular",
+  "image_url": "asset:brucoffee.jpg"
+ },
+ {
+  "pid": 31,
+  "name": "Tender Coconut",
+  "unit": "1 pc",
+  "price": 40,
+  "mrp": null,
+  "category": "beverage",
+  "tag": "organic",
+  "image_url": "asset:tendercoc.jpg"
+ },
+ {
+  "pid": 32,
+  "name": "Buttermilk",
+  "unit": "500 ml",
+  "price": 20,
+  "mrp": null,
+  "category": "beverage",
+  "tag": "popular",
+  "image_url": "asset:buttermilk.png"
+ },
+ {
+  "pid": 33,
+  "name": "Lemon Soda",
+  "unit": "300 ml",
+  "price": 25,
+  "mrp": 30,
+  "category": "beverage",
+  "tag": "new",
+  "image_url": "asset:lemonsoda.jpg"
+ },
+ {
+  "pid": 34,
+  "name": "Hot Chocolate Mix",
+  "unit": "200 g",
+  "price": 160,
+  "mrp": 190,
+  "category": "beverage",
+  "tag": "new",
+  "image_url": "asset:hotcho.jpg"
+ },
+ {
+  "pid": 35,
+  "name": "Bread",
+  "unit": "400 g",
+  "price": 40,
+  "mrp": null,
+  "category": "breakfast",
+  "tag": "popular",
+  "image_url": "asset:bread.jpg"
+ },
+ {
+  "pid": 36,
+  "name": "Rusk",
+  "unit": "200 g",
+  "price": 35,
+  "mrp": null,
+  "category": "breakfast",
+  "tag": "popular",
+  "image_url": "asset:rusk.jpg"
+ },
+ {
+  "pid": 37,
+  "name": "Oats",
+  "unit": "500 g",
+  "price": 99,
+  "mrp": 120,
+  "category": "breakfast",
+  "tag": "organic",
+  "image_url": "asset:oats.jpg"
+ },
+ {
+  "pid": 38,
+  "name": "Marie Biscuits",
+  "unit": "250 g",
+  "price": 30,
+  "mrp": null,
+  "category": "breakfast",
+  "tag": "popular",
+  "image_url": "asset:marigold.jpg"
+ },
+ {
+  "pid": 39,
+  "name": "Idli / Dosa Batter",
+  "unit": "1 kg",
+  "price": 55,
+  "mrp": null,
+  "category": "breakfast",
+  "tag": "popular",
+  "image_url": "asset:batter.jpg"
+ },
+ {
+  "pid": 40,
+  "name": "Sugar",
+  "unit": "1 kg",
+  "price": 48,
+  "mrp": null,
+  "category": "cooking",
+  "tag": "popular",
+  "image_url": "asset:sugar.jpg"
+ },
+ {
+  "pid": 41,
+  "name": "Rice (Ponni)",
+  "unit": "5 kg",
+  "price": 340,
+  "mrp": 380,
+  "category": "cooking",
+  "tag": "popular",
+  "image_url": "asset:rice.jpg"
+ },
+ {
+  "pid": 42,
+  "name": "Sunflower Oil",
+  "unit": "1 L",
+  "price": 135,
+  "mrp": 150,
+  "category": "cooking",
+  "tag": "sale",
+  "image_url": "asset:sunflower.jpg"
+ },
+ {
+  "pid": 43,
+  "name": "Toor Dal",
+  "unit": "500 g",
+  "price": 85,
+  "mrp": null,
+  "category": "cooking",
+  "tag": "popular",
+  "image_url": "asset:dal.jpg"
+ },
+ {
+  "pid": 44,
+  "name": "Salt",
+  "unit": "1 kg",
+  "price": 20,
+  "mrp": null,
+  "category": "cooking",
+  "tag": "popular",
+  "image_url": "asset:salt.jpg"
+ },
+ {
+  "pid": 45,
+  "name": "Jaggery",
+  "unit": "500 g",
+  "price": 55,
+  "mrp": null,
+  "category": "cooking",
+  "tag": "organic",
+  "image_url": "asset:jaggery.png"
+ },
+ {
+  "pid": 52,
+  "name": "Detergent Powder",
+  "unit": "1 kg",
+  "price": 110,
+  "mrp": 130,
+  "category": "home",
+  "tag": "sale",
+  "image_url": "asset:wash.jpg"
+ },
+ {
+  "pid": 53,
+  "name": "Dishwash Liquid",
+  "unit": "500 ml",
+  "price": 95,
+  "mrp": null,
+  "category": "home",
+  "tag": "popular",
+  "image_url": "asset:liqid.jpg"
+ },
+ {
+  "pid": 54,
+  "name": "Floor Cleaner",
+  "unit": "1 L",
+  "price": 140,
+  "mrp": 165,
+  "category": "home",
+  "tag": "new",
+  "image_url": "asset:floorcleaner.jpg"
+ },
+ {
+  "pid": 55,
+  "name": "Grapes (Black)",
+  "unit": "500 g",
+  "price": 70,
+  "mrp": 85,
+  "category": "fruits",
+  "tag": "popular",
+  "image_url": "asset:new/images/fruits/img_55.jpg"
+ },
+ {
+  "pid": 56,
+  "name": "Mango (Banganapalli)",
+  "unit": "1 kg",
+  "price": 110,
+  "mrp": 130,
+  "category": "fruits",
+  "tag": "new",
+  "image_url": "asset:new/images/fruits/img_56.jpeg"
+ },
+ {
+  "pid": 57,
+  "name": "Papaya",
+  "unit": "1 pc",
+  "price": 45,
+  "mrp": null,
+  "category": "fruits",
+  "tag": "organic",
+  "image_url": "asset:new/images/fruits/img_57.jpeg"
+ },
+ {
+  "pid": 58,
+  "name": "Pomegranate",
+  "unit": "500 g",
+  "price": 95,
+  "mrp": 115,
+  "category": "fruits",
+  "tag": "popular",
+  "image_url": "asset:new/images/fruits/img_58.jpg"
+ },
+ {
+  "pid": 59,
+  "name": "Cucumber",
+  "unit": "500 g",
+  "price": 30,
+  "mrp": null,
+  "category": "fruits",
+  "tag": "organic",
+  "image_url": "asset:new/images/fruits/img_59.jpeg"
+ },
+ {
+  "pid": 60,
+  "name": "Capsicum",
+  "unit": "250 g",
+  "price": 35,
+  "mrp": 45,
+  "category": "fruits",
+  "tag": "sale",
+  "image_url": "asset:new/images/fruits/img_60.jpeg"
+ },
+ {
+  "pid": 61,
+  "name": "Cauliflower",
+  "unit": "1 pc",
+  "price": 40,
+  "mrp": null,
+  "category": "fruits",
+  "tag": "new",
+  "image_url": "asset:new/images/fruits/img_61.jpeg"
+ },
+ {
+  "pid": 62,
+  "name": "Spinach (Keerai)",
+  "unit": "1 bunch",
+  "price": 20,
+  "mrp": null,
+  "category": "fruits",
+  "tag": "organic",
+  "image_url": "asset:new/images/fruits/img_62.png"
+ },
+ {
+  "pid": 63,
+  "name": "Coriander Leaves",
+  "unit": "100 g",
+  "price": 15,
+  "mrp": null,
+  "category": "fruits",
+  "tag": "popular",
+  "image_url": "asset:new/images/fruits/img_63.jpeg"
+ },
+ {
+  "pid": 64,
+  "name": "Ginger",
+  "unit": "250 g",
+  "price": 30,
+  "mrp": 40,
+  "category": "fruits",
+  "tag": "popular",
+  "image_url": "asset:new/images/fruits/img_64.jpeg"
+ },
+ {
+  "pid": 65,
+  "name": "Garlic",
+  "unit": "250 g",
+  "price": 55,
+  "mrp": 70,
+  "category": "fruits",
+  "tag": "popular",
+  "image_url": "asset:new/images/fruits/img_65.jpg"
+ },
+ {
+  "pid": 66,
+  "name": "Green Chilli",
+  "unit": "100 g",
+  "price": 12,
+  "mrp": null,
+  "category": "fruits",
+  "tag": "popular",
+  "image_url": "asset:new/images/fruits/img_66.jpeg"
+ },
+ {
+  "pid": 67,
+  "name": "Cabbage",
+  "unit": "1 pc",
+  "price": 35,
+  "mrp": null,
+  "category": "fruits",
+  "tag": "popular",
+  "image_url": "asset:new/images/fruits/img_67.jpeg"
+ },
+ {
+  "pid": 68,
+  "name": "Drumstick",
+  "unit": "250 g",
+  "price": 40,
+  "mrp": null,
+  "category": "fruits",
+  "tag": "organic",
+  "image_url": "asset:new/images/fruits/img_68.jpeg"
+ },
+ {
+  "pid": 69,
+  "name": "Lady's Finger (Okra)",
+  "unit": "250 g",
+  "price": 30,
+  "mrp": null,
+  "category": "fruits",
+  "tag": "popular",
+  "image_url": "asset:new/images/fruits/img_69.jpg"
+ },
+ {
+  "pid": 70,
+  "name": "Beans",
+  "unit": "250 g",
+  "price": 28,
+  "mrp": null,
+  "category": "fruits",
+  "tag": "organic",
+  "image_url": "asset:new/images/fruits/img_70.jpeg"
+ },
+ {
+  "pid": 71,
+  "name": "Pumpkin",
+  "unit": "500 g",
+  "price": 25,
+  "mrp": null,
+  "category": "fruits",
+  "tag": "popular",
+  "image_url": "asset:new/images/fruits/img_71.jpeg"
+ },
+ {
+  "pid": 72,
+  "name": "Coconut",
+  "unit": "1 pc",
+  "price": 35,
+  "mrp": 40,
+  "category": "fruits",
+  "tag": "popular",
+  "image_url": "asset:new/images/fruits/img_72.jpeg"
+ },
+ {
+  "pid": 73,
+  "name": "Guava",
+  "unit": "500 g",
+  "price": 60,
+  "mrp": null,
+  "category": "fruits",
+  "tag": "new",
+  "image_url": "asset:new/images/fruits/img_73.jpg"
+ },
+ {
+  "pid": 74,
+  "name": "Sapota (Chikku)",
+  "unit": "500 g",
+  "price": 50,
+  "mrp": null,
+  "category": "fruits",
+  "tag": "organic",
+  "image_url": "asset:new/images/fruits/img_74.jpg"
+ },
+ {
+  "pid": 75,
+  "name": "Kiwi",
+  "unit": "3 pcs",
+  "price": 99,
+  "mrp": 120,
+  "category": "fruits",
+  "tag": "new",
+  "image_url": "asset:new/images/fruits/img_75.jpg"
+ },
+ {
+  "pid": 76,
+  "name": "Strawberry",
+  "unit": "250 g",
+  "price": 89,
+  "mrp": 110,
+  "category": "fruits",
+  "tag": "sale",
+  "image_url": "asset:new/images/fruits/img_76.png"
+ },
+ {
+  "pid": 77,
+  "name": "Sweet Corn",
+  "unit": "2 pcs",
+  "price": 40,
+  "mrp": null,
+  "category": "fruits",
+  "tag": "popular",
+  "image_url": "asset:new/images/fruits/img_77.jpeg"
+ },
+ {
+  "pid": 78,
+  "name": "Mushroom",
+  "unit": "200 g",
+  "price": 55,
+  "mrp": 65,
+  "category": "fruits",
+  "tag": "new",
+  "image_url": "asset:new/images/fruits/img_78.jpeg"
+ },
+ {
+  "pid": 79,
+  "name": "Prawns",
+  "unit": "250 g",
+  "price": 260,
+  "mrp": 300,
+  "category": "meat",
+  "tag": "popular",
+  "image_url": "asset:new/images/meat/img_79.jpg"
+ },
+ {
+  "pid": 80,
+  "name": "Chicken Curry Cut",
+  "unit": "500 g",
+  "price": 190,
+  "mrp": 220,
+  "category": "meat",
+  "tag": "sale",
+  "image_url": "asset:new/images/meat/img_80.jpg"
+ },
+ {
+  "pid": 81,
+  "name": "Seer Fish (Vanjaram)",
+  "unit": "500 g",
+  "price": 420,
+  "mrp": 480,
+  "category": "meat",
+  "tag": "new",
+  "image_url": "asset:new/images/meat/img_81.jpg"
+ },
+ {
+  "pid": 82,
+  "name": "Sardine (Mathi)",
+  "unit": "500 g",
+  "price": 150,
+  "mrp": null,
+  "category": "meat",
+  "tag": "popular",
+  "image_url": "asset:new/images/meat/img_82.jpg"
+ },
+ {
+  "pid": 83,
+  "name": "Crab",
+  "unit": "500 g",
+  "price": 380,
+  "mrp": 420,
+  "category": "meat",
+  "tag": "new",
+  "image_url": "asset:new/images/meat/img_83.jpg"
+ },
+ {
+  "pid": 84,
+  "name": "Squid",
+  "unit": "250 g",
+  "price": 160,
+  "mrp": null,
+  "category": "meat",
+  "tag": "popular",
+  "image_url": "asset:new/images/meat/img_84.jpg"
+ },
+ {
+  "pid": 85,
+  "name": "Country Chicken",
+  "unit": "1 kg",
+  "price": 450,
+  "mrp": 520,
+  "category": "meat",
+  "tag": "popular",
+  "image_url": "asset:new/images/meat/img_85.jpg"
+ },
+ {
+  "pid": 86,
+  "name": "Masala Corn Puffs",
+  "unit": "90 g",
+  "price": 20,
+  "mrp": null,
+  "category": "snacks",
+  "tag": "popular",
+  "image_url": "asset:new/images/snacks/img_86.jpg"
+ },
+ {
+  "pid": 87,
+  "name": "Milk Chocolate",
+  "unit": "50 g",
+  "price": 45,
+  "mrp": 50,
+  "category": "snacks",
+  "tag": "popular",
+  "image_url": "asset:new/images/snacks/img_87.jpg"
+ },
+ {
+  "pid": 88,
+  "name": "Banana Chips",
+  "unit": "200 g",
+  "price": 70,
+  "mrp": 85,
+  "category": "snacks",
+  "tag": "new",
+  "image_url": "asset:new/images/snacks/img_88.jpg"
+ },
+ {
+  "pid": 89,
+  "name": "Peanut Chikki",
+  "unit": "100 g",
+  "price": 30,
+  "mrp": null,
+  "category": "snacks",
+  "tag": "organic",
+  "image_url": "asset:new/images/snacks/img_89.jpg"
+ },
+ {
+  "pid": 90,
+  "name": "Salted Potato Wafers",
+  "unit": "52 g",
+  "price": 10,
+  "mrp": null,
+  "category": "snacks",
+  "tag": "popular",
+  "image_url": "asset:new/images/snacks/img_90.jpg"
+ },
+ {
+  "pid": 91,
+  "name": "Cream Biscuits",
+  "unit": "120 g",
+  "price": 25,
+  "mrp": 30,
+  "category": "snacks",
+  "tag": "sale",
+  "image_url": "asset:new/images/snacks/img_91.jpg"
+ },
+ {
+  "pid": 92,
+  "name": "Roasted Peanuts",
+  "unit": "150 g",
+  "price": 40,
+  "mrp": null,
+  "category": "snacks",
+  "tag": "popular",
+  "image_url": "asset:new/images/snacks/img_92.jpg"
+ },
+ {
+  "pid": 93,
+  "name": "Butter Popcorn",
+  "unit": "100 g",
+  "price": 35,
+  "mrp": 40,
+  "category": "snacks",
+  "tag": "new",
+  "image_url": "asset:new/images/snacks/img_93.jpg"
+ },
+ {
+  "pid": 94,
+  "name": "Fruit Gummies",
+  "unit": "100 g",
+  "price": 50,
+  "mrp": null,
+  "category": "snacks",
+  "tag": "new",
+  "image_url": "asset:new/images/snacks/img_94.jpg"
+ },
+ {
+  "pid": 95,
+  "name": "Rice Murukku",
+  "unit": "200 g",
+  "price": 55,
+  "mrp": null,
+  "category": "snacks",
+  "tag": "popular",
+  "image_url": "asset:new/images/snacks/img_95.png"
+ },
+ {
+  "pid": 96,
+  "name": "Dark Chocolate",
+  "unit": "80 g",
+  "price": 120,
+  "mrp": 140,
+  "category": "snacks",
+  "tag": "popular",
+  "image_url": "asset:new/images/snacks/img_96.png"
+ },
+ {
+  "pid": 97,
+  "name": "Toned Milk",
+  "unit": "500 ml",
+  "price": 28,
+  "mrp": null,
+  "category": "dairy",
+  "tag": "popular",
+  "image_url": "asset:new/images/dairy/img_97.jpg"
+ },
+ {
+  "pid": 98,
+  "name": "Skimmed Milk",
+  "unit": "1 L",
+  "price": 62,
+  "mrp": null,
+  "category": "dairy",
+  "tag": "new",
+  "image_url": "asset:new/images/dairy/img_98.jpg"
+ },
+ {
+  "pid": 99,
+  "name": "Cheese Slices",
+  "unit": "200 g",
+  "price": 130,
+  "mrp": 150,
+  "category": "dairy",
+  "tag": "sale",
+  "image_url": "asset:new/images/dairy/img_99.jpg"
+ },
+ {
+  "pid": 100,
+  "name": "Lassi",
+  "unit": "200 ml",
+  "price": 25,
+  "mrp": null,
+  "category": "dairy",
+  "tag": "new",
+  "image_url": "asset:new/images/dairy/img_100.png"
+ },
+ {
+  "pid": 101,
+  "name": "Greek Yogurt",
+  "unit": "400 g",
+  "price": 95,
+  "mrp": 110,
+  "category": "dairy",
+  "tag": "organic",
+  "image_url": "asset:new/images/dairy/img_101.jpg"
+ },
+ {
+  "pid": 102,
+  "name": "Fresh Cream",
+  "unit": "200 ml",
+  "price": 55,
+  "mrp": null,
+  "category": "dairy",
+  "tag": "popular",
+  "image_url": "asset:new/images/dairy/img_102.jpeg"
+ },
+ {
+  "pid": 103,
+  "name": "Cheese Spread",
+  "unit": "180 g",
+  "price": 90,
+  "mrp": 105,
+  "category": "dairy",
+  "tag": "popular",
+  "image_url": "asset:new/images/dairy/img_103.jpeg"
+ },
+ {
+  "pid": 104,
+  "name": "Mozzarella Cheese",
+  "unit": "200 g",
+  "price": 155,
+  "mrp": 180,
+  "category": "dairy",
+  "tag": "new",
+  "image_url": "asset:new/images/dairy/img_104.jpeg"
+ },
+ {
+  "pid": 105,
+  "name": "Strawberry Yogurt",
+  "unit": "100 g",
+  "price": 25,
+  "mrp": null,
+  "category": "dairy",
+  "tag": "new",
+  "image_url": "asset:new/images/dairy/img_105.jpeg"
+ },
+ {
+  "pid": 106,
+  "name": "Green Tea",
+  "unit": "25 bags",
+  "price": 140,
+  "mrp": 165,
+  "category": "beverage",
+  "tag": "organic",
+  "image_url": "asset:new/images/berverages/img_106.jpg"
+ },
+ {
+  "pid": 107,
+  "name": "Rose Milk",
+  "unit": "200 ml",
+  "price": 30,
+  "mrp": null,
+  "category": "beverage",
+  "tag": "popular",
+  "image_url": "asset:new/images/berverages/img_107.jpeg"
+ },
+ {
+  "pid": 108,
+  "name": "Orange Juice",
+  "unit": "1 L",
+  "price": 75,
+  "mrp": 95,
+  "category": "beverage",
+  "tag": "sale",
+  "image_url": "asset:new/images/berverages/img_108.jpeg"
+ },
+ {
+  "pid": 109,
+  "name": "Cola Drink",
+  "unit": "750 ml",
+  "price": 40,
+  "mrp": 45,
+  "category": "beverage",
+  "tag": "popular",
+  "image_url": "asset:new/images/berverages/img_109.jpg"
+ },
+ {
+  "pid": 110,
+  "name": "Apple Juice",
+  "unit": "1 L",
+  "price": 80,
+  "mrp": 95,
+  "category": "beverage",
+  "tag": "popular",
+  "image_url": "asset:new/images/berverages/img_110.jpg"
+ },
+ {
+  "pid": 111,
+  "name": "Coconut Water",
+  "unit": "200 ml",
+  "price": 35,
+  "mrp": null,
+  "category": "beverage",
+  "tag": "organic",
+  "image_url": "asset:new/images/berverages/img_111.jpg"
+ },
+ {
+  "pid": 112,
+  "name": "Energy Drink",
+  "unit": "250 ml",
+  "price": 110,
+  "mrp": 125,
+  "category": "beverage",
+  "tag": "new",
+  "image_url": "asset:new/images/berverages/img_112.jpg"
+ },
+ {
+  "pid": 113,
+  "name": "Mineral Water",
+  "unit": "1 L",
+  "price": 20,
+  "mrp": null,
+  "category": "beverage",
+  "tag": "popular",
+  "image_url": "asset:new/images/berverages/img_113.jpg"
+ },
+ {
+  "pid": 114,
+  "name": "Cold Coffee",
+  "unit": "200 ml",
+  "price": 55,
+  "mrp": null,
+  "category": "beverage",
+  "tag": "new",
+  "image_url": "asset:new/images/berverages/img_114.jpg"
+ },
+ {
+  "pid": 115,
+  "name": "Filter Coffee Powder",
+  "unit": "200 g",
+  "price": 150,
+  "mrp": null,
+  "category": "beverage",
+  "tag": "popular",
+  "image_url": "asset:new/images/berverages/img_115.jpg"
+ },
+ {
+  "pid": 116,
+  "name": "Orange Soda",
+  "unit": "750 ml",
+  "price": 40,
+  "mrp": null,
+  "category": "beverage",
+  "tag": "new",
+  "image_url": "asset:new/images/berverages/img_116.jpg"
+ },
+ {
+  "pid": 117,
+  "name": "Corn Flakes",
+  "unit": "475 g",
+  "price": 185,
+  "mrp": 215,
+  "category": "breakfast",
+  "tag": "popular",
+  "image_url": "asset:new/images/breakfast/img_117.jpeg"
+ },
+ {
+  "pid": 118,
+  "name": "Peanut Butter",
+  "unit": "340 g",
+  "price": 165,
+  "mrp": 190,
+  "category": "breakfast",
+  "tag": "new",
+  "image_url": "asset:new/images/breakfast/img_118.jpg"
+ },
+ {
+  "pid": 119,
+  "name": "Mixed Fruit Jam",
+  "unit": "500 g",
+  "price": 140,
+  "mrp": null,
+  "category": "breakfast",
+  "tag": "popular",
+  "image_url": "asset:new/images/breakfast/img_119.jpeg"
+ },
+ {
+  "pid": 120,
+  "name": "Poha",
+  "unit": "500 g",
+  "price": 45,
+  "mrp": null,
+  "category": "breakfast",
+  "tag": "organic",
+  "image_url": "asset:new/images/breakfast/img_120.jpeg"
+ },
+ {
+  "pid": 121,
+  "name": "Muesli",
+  "unit": "500 g",
+  "price": 220,
+  "mrp": 250,
+  "category": "breakfast",
+  "tag": "new",
+  "image_url": "asset:new/images/breakfast/img_121.jpg"
+ },
+ {
+  "pid": 122,
+  "name": "Honey",
+  "unit": "250 g",
+  "price": 140,
+  "mrp": 160,
+  "category": "breakfast",
+  "tag": "organic",
+  "image_url": "asset:new/images/breakfast/img_122.jpg"
+ },
+ {
+  "pid": 123,
+  "name": "Chocolate Spread",
+  "unit": "350 g",
+  "price": 210,
+  "mrp": null,
+  "category": "breakfast",
+  "tag": "popular",
+  "image_url": "asset:new/images/breakfast/img_123.png"
+ },
+ {
+  "pid": 124,
+  "name": "Vermicelli (Semiya)",
+  "unit": "400 g",
+  "price": 40,
+  "mrp": null,
+  "category": "breakfast",
+  "tag": "popular",
+  "image_url": "asset:new/images/breakfast/img_124.jpg"
+ },
+ {
+  "pid": 125,
+  "name": "Upma Rava",
+  "unit": "500 g",
+  "price": 38,
+  "mrp": null,
+  "category": "breakfast",
+  "tag": "popular",
+  "image_url": "asset:new/images/breakfast/img_125.jpg"
+ },
+ {
+  "pid": 126,
+  "name": "Turmeric Powder",
+  "unit": "100 g",
+  "price": 40,
+  "mrp": null,
+  "category": "cooking",
+  "tag": "popular",
+  "image_url": "asset:new/images/cooking/img_126.png"
+ },
+ {
+  "pid": 127,
+  "name": "Chilli Powder",
+  "unit": "100 g",
+  "price": 45,
+  "mrp": 55,
+  "category": "cooking",
+  "tag": "popular",
+  "image_url": "asset:new/images/cooking/img_127.png"
+ },
+ {
+  "pid": 128,
+  "name": "Coconut Oil",
+  "unit": "500 ml",
+  "price": 120,
+  "mrp": 140,
+  "category": "cooking",
+  "tag": "popular",
+  "image_url": "asset:new/images/cooking/img_128.jpg"
+ },
+ {
+  "pid": 129,
+  "name": "Wheat Flour (Atta)",
+  "unit": "5 kg",
+  "price": 260,
+  "mrp": 290,
+  "category": "cooking",
+  "tag": "sale",
+  "image_url": "asset:new/images/cooking/img_129.jpg"
+ },
+ {
+  "pid": 130,
+  "name": "Basmati Rice",
+  "unit": "1 kg",
+  "price": 120,
+  "mrp": 140,
+  "category": "cooking",
+  "tag": "new",
+  "image_url": "asset:new/images/cooking/img_130.jpg"
+ },
+ {
+  "pid": 131,
+  "name": "Tamarind",
+  "unit": "250 g",
+  "price": 55,
+  "mrp": null,
+  "category": "cooking",
+  "tag": "organic",
+  "image_url": "asset:new/images/cooking/img_131.jpg"
+ },
+ {
+  "pid": 132,
+  "name": "Mustard Seeds",
+  "unit": "100 g",
+  "price": 20,
+  "mrp": null,
+  "category": "cooking",
+  "tag": "popular",
+  "image_url": "asset:new/images/cooking/img_132.jpeg"
+ },
+ {
+  "pid": 133,
+  "name": "Cumin Seeds",
+  "unit": "100 g",
+  "price": 60,
+  "mrp": null,
+  "category": "cooking",
+  "tag": "popular",
+  "image_url": "asset:new/images/cooking/img_133.jpg"
+ },
+ {
+  "pid": 134,
+  "name": "Coriander Powder",
+  "unit": "100 g",
+  "price": 38,
+  "mrp": null,
+  "category": "cooking",
+  "tag": "popular",
+  "image_url": "asset:new/images/cooking/img_134.png"
+ },
+ {
+  "pid": 135,
+  "name": "Garam Masala",
+  "unit": "50 g",
+  "price": 55,
+  "mrp": null,
+  "category": "cooking",
+  "tag": "new",
+  "image_url": "asset:new/images/cooking/img_135.jpg"
+ },
+ {
+  "pid": 136,
+  "name": "Besan (Gram Flour)",
+  "unit": "500 g",
+  "price": 65,
+  "mrp": null,
+  "category": "cooking",
+  "tag": "popular",
+  "image_url": "asset:new/images/cooking/img_136.jpeg"
+ },
+ {
+  "pid": 137,
+  "name": "Ragi Flour",
+  "unit": "500 g",
+  "price": 50,
+  "mrp": null,
+  "category": "cooking",
+  "tag": "organic",
+  "image_url": "asset:new/images/cooking/img_137.jpg"
+ },
+ {
+  "pid": 138,
+  "name": "Toilet Cleaner",
+  "unit": "500 ml",
+  "price": 85,
+  "mrp": 100,
+  "category": "home",
+  "tag": "popular",
+  "image_url": "asset:new/images/home/img_138.jpg"
+ },
+ {
+  "pid": 139,
+  "name": "Garbage Bags",
+  "unit": "30 pcs",
+  "price": 75,
+  "mrp": null,
+  "category": "home",
+  "tag": "new",
+  "image_url": "asset:new/images/home/img_139.jpeg"
+ },
+ {
+  "pid": 140,
+  "name": "Hand Wash",
+  "unit": "250 ml",
+  "price": 89,
+  "mrp": 110,
+  "category": "home",
+  "tag": "sale",
+  "image_url": "asset:new/images/home/img_140.jpg"
+ },
+ {
+  "pid": 141,
+  "name": "Scrub Pad",
+  "unit": "3 pcs",
+  "price": 40,
+  "mrp": null,
+  "category": "home",
+  "tag": "popular",
+  "image_url": "asset:new/images/home/img_141.jpg"
+ },
+ {
+  "pid": 142,
+  "name": "Glass Cleaner",
+  "unit": "500 ml",
+  "price": 110,
+  "mrp": 130,
+  "category": "home",
+  "tag": "new",
+  "image_url": "asset:new/images/home/img_142.jpg"
+ },
+ {
+  "pid": 143,
+  "name": "Tissue Paper",
+  "unit": "100 pulls",
+  "price": 60,
+  "mrp": null,
+  "category": "home",
+  "tag": "popular",
+  "image_url": "asset:new/images/home/img_143.jpg"
+ },
+ {
+  "pid": 144,
+  "name": "Phenyl",
+  "unit": "1 L",
+  "price": 95,
+  "mrp": null,
+  "category": "home",
+  "tag": "popular",
+  "image_url": "asset:new/images/home/img_144.jpeg"
+ },
+ {
+  "pid": 145,
+  "name": "Room Freshener",
+  "unit": "220 ml",
+  "price": 150,
+  "mrp": 175,
+  "category": "home",
+  "tag": "sale",
+  "image_url": "asset:new/images/home/img_145.jpeg"
+ },
+ {
+  "pid": 146,
+  "name": "Bath Soap (Pack of 3)",
+  "unit": "3 x 100 g",
+  "price": 120,
+  "mrp": 140,
+  "category": "home",
+  "tag": "popular",
+  "image_url": "asset:new/images/home/img_146.png"
+ },
+ {
+  "pid": 147,
+  "name": "Cat Food",
+  "unit": "1 kg",
+  "price": 320,
+  "mrp": 370,
+  "category": "petcare",
+  "tag": "new",
+  "image_url": "asset:new/images/petcare/img_147.jpeg"
+ },
+ {
+  "pid": 148,
+  "name": "Dog Treats",
+  "unit": "200 g",
+  "price": 110,
+  "mrp": 130,
+  "category": "petcare",
+  "tag": "popular",
+  "image_url": "asset:new/images/petcare/img_148.jpg"
+ },
+ {
+  "pid": 149,
+  "name": "Dog Chew Toy",
+  "unit": "1 pc",
+  "price": 120,
+  "mrp": null,
+  "category": "petcare",
+  "tag": "popular",
+  "image_url": "asset:new/images/petcare/img_149.jpeg"
+ },
+ {
+  "pid": 150,
+  "name": "Pet Food Bowl",
+  "unit": "1 pc",
+  "price": 150,
+  "mrp": null,
+  "category": "petcare",
+  "tag": "new",
+  "image_url": "asset:new/images/petcare/img_150.png"
+ },
+ {
+  "pid": 151,
+  "name": "Cat Litter",
+  "unit": "5 kg",
+  "price": 420,
+  "mrp": 480,
+  "category": "petcare",
+  "tag": "sale",
+  "image_url": "asset:new/images/petcare/img_151.jpg"
+ },
+ {
+  "pid": 152,
+  "name": "Fish Food",
+  "unit": "100 g",
+  "price": 90,
+  "mrp": null,
+  "category": "petcare",
+  "tag": "popular",
+  "image_url": "asset:new/images/petcare/img_152.jpg"
+ },
+ {
+  "pid": 153,
+  "name": "Bird Seed Mix",
+  "unit": "500 g",
+  "price": 130,
+  "mrp": null,
+  "category": "petcare",
+  "tag": "new",
+  "image_url": "asset:new/images/petcare/img_153.jpg"
+ },
+ {
+  "pid": 154,
+  "name": "Dog Leash",
+  "unit": "1 pc",
+  "price": 220,
+  "mrp": 260,
+  "category": "petcare",
+  "tag": "popular",
+  "image_url": "asset:new/images/petcare/img_154.jpeg"
+ }
+]

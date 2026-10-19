@@ -1,0 +1,54 @@
+/* ══════════ Shared: loader, login + register extras ══════════ */
+.fm-loader {
+  min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 14px; padding: 24px; text-align: center; color: var(--muted); font-family: 'Montserrat', sans-serif;
+}
+.fm-loader p { margin: 0; }
+.fm-loader-spin {
+  width: 38px; height: 38px; border-radius: 50%;
+  border: 4px solid var(--primary-light); border-top-color: var(--primary);
+  animation: fm-spin .8s linear infinite;
+}
+@keyframes fm-spin { to { transform: rotate(360deg); } }
+
+.login-card-wide { max-width: 460px; }
+.login-pw { position: relative; display: flex; }
+.login-pw .login-input { flex: 1; padding-right: 64px; }
+.login-pw-toggle {
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+  background: none; border: 0; color: #007a50; font-family: inherit; font-weight: 700; font-size: 13px; cursor: pointer;
+}
+a.login-google-btn { text-decoration: none; color: var(--text); justify-content: center; }
+.login-demo {
+  display: flex; flex-direction: column; gap: 3px; font-size: 12px; line-height: 1.5; color: #5b6472;
+  background: var(--primary-light); border-radius: 10px; padding: 10px 12px;
+}
+.login-demo b { color: var(--text); }
+.login-demo code { font-size: 11px; }
+
+/* Register */
+.reg-roles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.reg-role {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left;
+  border: 1.5px solid var(--border); background: #fff; border-radius: 14px; padding: 12px 14px;
+  font-family: inherit; cursor: pointer; transition: border-color .15s, box-shadow .15s;
+}
+.reg-role b { font-size: 14px; color: var(--text); }
+.reg-role span:last-child { font-size: 12px; color: #5b6472; }
+.reg-role-ic {
+  width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; margin-bottom: 6px;
+  background: #f3f4f6; color: #5b6472;
+}
+.reg-role.on { border-color: #00a870; box-shadow: 0 0 0 4px rgba(0,168,112,.12); }
+.reg-role.on .reg-role-ic { background: #00a870; color: #fff; }
+.reg-section {
+  margin: 6px 0 -6px; font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #007a50;
+}
+.reg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.reg-grid > * { min-width: 0; }
+.reg-time { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: #5b6472; }
+select.login-input { background: #fff; appearance: auto; }
+
+@media (max-width: 420px) {
+  .reg-grid { grid-template-columns: 1fr; }
+}
