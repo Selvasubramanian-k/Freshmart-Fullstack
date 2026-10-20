@@ -72,6 +72,7 @@ function OrderCard({ order, onOrderAgain, onChanged }) {
   const [issue, setIssue]     = useState(null)   // { type, text }
   const [busy, setBusy]       = useState(false)
   const [msg, setMsg]         = useState('')
+  const navigate = useNavigate()
 
   const canCancel = ['placed', 'confirmed'].includes(o.status)
   const canIssue  = !['cancelled', 'returned', 'return_requested'].includes(o.status)
@@ -94,6 +95,7 @@ function OrderCard({ order, onOrderAgain, onChanged }) {
     } catch (e) { setMsg(e.message) } finally { setBusy(false) }
   }
 
+  const live = ['placed', 'confirmed', 'packed', 'out_for_delivery'].includes(o.status)
   const tone = o.status === 'cancelled' ? 'bad' : ['delivered', 'returned'].includes(o.status) ? 'good' : 'live'
 
   return (
@@ -117,6 +119,16 @@ function OrderCard({ order, onOrderAgain, onChanged }) {
           </div>
         ))}
       </div>
+
+      {live && (
+        <div className="acc-live">
+          <div>
+            <b>{o.partner ? `${o.partner.name} ${o.status === 'out_for_delivery' ? 'is on the way' : 'will deliver this'}` : 'Track your order on the map'}</b>
+            {o.delivery_code && <span>Delivery code <strong>{o.delivery_code}</strong> · share only at your door</span>}
+          </div>
+          <button className="acc-primary" onClick={() => navigate(`/track/${o.id}`)}>Track live</button>
+        </div>
+      )}
 
       {open && (
         <div className="acc-order-detail">

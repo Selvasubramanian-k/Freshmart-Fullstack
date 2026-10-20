@@ -8,7 +8,8 @@ import { homeFor } from '../utils/roles.js'
 //  Register (design B3): picture role cards + floating label inputs.
 //    Customer    -> name, mobile, email, password + delivery address
 //    Store owner -> same + store details (name, type, timings, GST) + store address
-//  /register?role=admin nu open panna Store owner select aagi irukkum.
+//    Delivery    -> same basic details + vehicle (bike/scooter/cycle), vehicle number, city
+//  /register?role=admin or ?role=delivery nu open panna andha role select aagi irukkum.
 //  Styles: src/shared/shared.css la "REGISTER (B3)" section.
 // ─────────────────────────────────────────────────────────────
 const STATES = ['Tamil Nadu', 'Kerala', 'Karnataka', 'Andhra Pradesh', 'Telangana', 'Puducherry', 'Maharashtra', 'Delhi', 'Other']
@@ -18,7 +19,10 @@ const EMPTY = {
   name: '', email: '', phone: '', password: '',
   line1: '', landmark: '', city: '', state: 'Tamil Nadu', pincode: '',
   storeName: '', gst: '', storeType: 'Grocery', openTime: '08:00', closeTime: '22:00',
+  vehicleType: 'scooter', vehicleNumber: '',
 }
+const VEHICLES = [{ id: 'bike', label: 'Bike' }, { id: 'scooter', label: 'Scooter' }, { id: 'cycle', label: 'Cycle' }]
+const ROLES = ['customer', 'admin', 'delivery']
 
 const GST_RE = /^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/
 
@@ -31,6 +35,11 @@ function validate(role, f) {
     if (f.storeName.trim().length < 2) return 'Please enter your store name.'
     if (f.gst && !GST_RE.test(f.gst))  return 'GST number looks wrong (15 characters, e.g. 33ABCDE1234F1Z5).'
     if (f.openTime >= f.closeTime)     return 'Closing time must be after opening time.'
+  }
+  if (role === 'delivery') {
+    if (f.vehicleType !== 'cycle' && f.vehicleNumber.trim().length < 4) return 'Please enter your vehicle number (e.g. TN09AB1234).'
+    if (f.city.trim().length < 2)      return 'Please enter the city you will deliver in.'
+    return ''
   }
   if (f.line1.trim().length < 3)       return role === 'admin' ? 'Please enter the store address.' : 'Please enter your address.'
   if (f.city.trim().length < 2)        return 'Please enter the city.'
@@ -48,6 +57,9 @@ function buildPayload(role, f) {
   }
   const base = { role, name: f.name.trim(), email: f.email.trim().toLowerCase(), phone: f.phone, password: f.password }
   if (role === 'customer') return { ...base, address }
+  if (role === 'delivery') {
+    return { ...base, city: f.city.trim(), vehicle: { type: f.vehicleType, number: f.vehicleType === 'cycle' ? '' : f.vehicleNumber.trim() } }
+  }
   return {
     ...base,
     store: {
@@ -106,6 +118,19 @@ function StoreArt({ on }) {
   )
 }
 
+function RiderArt({ on }) {
+  return (
+    <svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true">
+      <circle cx="32" cy="32" r="30" fill={on ? '#d6efe3' : '#f1f3f4'} />
+      <circle cx="20" cy="42" r="6" fill="none" stroke={on ? '#0b3d2e' : '#7c8691'} strokeWidth="3" />
+      <circle cx="45" cy="42" r="6" fill="none" stroke={on ? '#0b3d2e' : '#7c8691'} strokeWidth="3" />
+      <path d="M20 42h12l6-10h-8M38 32l7 10" fill="none" stroke={on ? '#007a50' : '#9aa3ad'} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+      <rect x="15" y="22" width="13" height="11" rx="2" fill={on ? '#f5a623' : '#c9d1d6'} />
+      <circle cx="36" cy="19" r="4" fill={on ? '#00a870' : '#9aa3ad'} />
+    </svg>
+  )
+}
+
 function Logo() {
   return (
     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -119,7 +144,7 @@ export default function Register() {
   const navigate = useNavigate()
   const [params] = useSearchParams()
 
-  const [role, setRole]       = useState(params.get('role') === 'admin' ? 'admin' : 'customer')
+  const [role, setRole]       = useState(ROLES.includes(params.get('role')) ? params.get('role') : 'customer')
   const [form, setForm]       = useState(EMPTY)
   const [showPw, setShowPw]   = useState(false)
   const [error, setError]     = useState('')
@@ -130,6 +155,7 @@ export default function Register() {
   const set = (key) => (e) => {
     let v = e.target.value
     if (key === 'phone' || key === 'pincode') v = v.replace(/\D/g, '').slice(0, key === 'phone' ? 10 : 6)
+    if (key === 'vehicleNumber') v = v.toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0, 12)
     if (key === 'gst') v = v.toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0, 15)
     setForm((f) => ({ ...f, [key]: v }))
     setError('')
@@ -150,6 +176,7 @@ export default function Register() {
   }
 
   const isAdmin = role === 'admin'
+  const isRider = role === 'delivery'
   const pw = strength(form.password)
 
   return (
@@ -175,6 +202,7 @@ export default function Register() {
           {[
             { id: 'customer', label: 'Customer',    sub: 'Shop groceries',    Art: CustomerArt },
             { id: 'admin',    label: 'Store owner', sub: 'Sell on FreshMart', Art: StoreArt },
+            { id: 'delivery', label: 'Delivery',    sub: 'Ride & earn',       Art: RiderArt },
           ].map(({ id, label, sub, Art }) => (
             <button
               type="button" key={id} role="radio" aria-checked={role === id}
@@ -205,9 +233,15 @@ export default function Register() {
                 <input type="tel" inputMode="numeric" autoComplete="tel-national" placeholder="98400 12345" value={form.phone} onChange={set('phone')} />
               </span>
             </Field>
-            <Field label="Pincode">
-              <input inputMode="numeric" autoComplete="postal-code" placeholder="600042" value={form.pincode} onChange={set('pincode')} />
-            </Field>
+            {isRider ? (
+              <Field label="City">
+                <input autoComplete="address-level2" placeholder="Chennai" value={form.city} onChange={set('city')} />
+              </Field>
+            ) : (
+              <Field label="Pincode">
+                <input inputMode="numeric" autoComplete="postal-code" placeholder="600042" value={form.pincode} onChange={set('pincode')} />
+              </Field>
+            )}
           </div>
           <Field label="Email">
             <input type="email" autoComplete="email" placeholder="you@example.com" value={form.email} onChange={set('email')} />
@@ -258,8 +292,29 @@ export default function Register() {
           </div>
         )}
 
+        {/* ── Vehicle (delivery partner only) ── */}
+        {isRider && (
+          <div className="reg3-fields">
+            <p className="reg3-section">Your vehicle</p>
+            <div className="reg3-chips" role="radiogroup" aria-label="Vehicle type">
+              {VEHICLES.map((v) => (
+                <button
+                  type="button" key={v.id} role="radio" aria-checked={form.vehicleType === v.id}
+                  className={`reg3-chip ${form.vehicleType === v.id ? 'on' : ''}`}
+                  onClick={() => { setForm((f) => ({ ...f, vehicleType: v.id })); setError('') }}
+                >{v.label}</button>
+              ))}
+            </div>
+            {form.vehicleType !== 'cycle' && (
+              <Field label="Vehicle number">
+                <input placeholder="TN09AB1234" value={form.vehicleNumber} onChange={set('vehicleNumber')} />
+              </Field>
+            )}
+          </div>
+        )}
+
         {/* ── Address ── */}
-        <div className="reg3-fields">
+        {!isRider && <div className="reg3-fields">
           <p className="reg3-section">{isAdmin ? 'Store address' : 'Delivery address'}</p>
           <Field label="Flat / door no., street, area">
             <input autoComplete="address-line1" placeholder="7, Lake View Road, Velachery" value={form.line1} onChange={set('line1')} />
@@ -277,12 +332,12 @@ export default function Register() {
           <Field label="Landmark" hint="(optional)">
             <input placeholder="Near bus stop" value={form.landmark} onChange={set('landmark')} />
           </Field>
-        </div>
+        </div>}
 
         {error && <p className="login-error" role="alert">{error}</p>}
 
         <button type="submit" className="reg3-submit" disabled={loading}>
-          {loading ? <span className="login-spinner" /> : isAdmin ? 'Create store account' : 'Create account'}
+          {loading ? <span className="login-spinner" /> : isAdmin ? 'Create store account' : isRider ? 'Start delivering' : 'Create account'}
         </button>
         <p className="reg3-foot">Already a member? <Link to="/login">Sign in</Link></p>
       </form>

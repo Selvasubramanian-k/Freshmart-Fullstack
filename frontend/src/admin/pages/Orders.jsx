@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { ClipboardList, RefreshCw, Search, MapPin, Phone, CreditCard, Clock } from 'lucide-react'
+import { Bike, ClipboardList, RefreshCw, Search, MapPin, Phone, CreditCard, Clock } from 'lucide-react'
 import { api } from '../../shared/api/client.js'
 import { resolveImage } from '../../shared/utils/images.js'
 import { Empty, ErrorNote, Modal, PageHead, StatusBadge } from '../components/ui.jsx'
-import { NEXT_ACTIONS, ORDER_STATUS, PAY_NAMES, SLOT_NAMES, fmtDateTime, rs } from '../utils/format.js'
+import { actionsFor, ORDER_STATUS, PAY_NAMES, SLOT_NAMES, fmtDateTime, rs } from '../utils/format.js'
 
 const TABS = [
   { id: 'active',    label: 'Active',    match: (s) => ['placed', 'confirmed', 'packed', 'out_for_delivery'].includes(s) },
@@ -18,7 +18,8 @@ const TABS = [
 function OrderDetail({ order, onClose, onUpdated }) {
   const [busy, setBusy]   = useState('')
   const [error, setError] = useState('')
-  const actions = NEXT_ACTIONS[order.status] || []
+  const actions = actionsFor(order)
+  const rider = order.partner
 
   const move = async (to) => {
     let note = null
@@ -54,6 +55,22 @@ function OrderDetail({ order, onClose, onUpdated }) {
             <p className="ad-od-line"><Clock size={14} /> {SLOT_NAMES[order.slot] || order.slot}</p>
             <p className="ad-od-line"><CreditCard size={14} /> {PAY_NAMES[order.payment.method]} · <b className={`ad-pay ${order.payment.status}`}>{order.payment.status}</b></p>
             {order.payment.transaction_id && <p className="ad-muted ad-small mono">{order.payment.transaction_id}</p>}
+          </div>
+          <div className="ad-od-box">
+            <p className="ad-od-h">Delivery partner</p>
+            {rider ? (
+              <>
+                <b>{rider.name}</b>
+                {rider.phone && <a className="ad-od-line" href={`tel:+91${rider.phone}`}><Phone size={14} /> +91 {rider.phone}</a>}
+                <p className="ad-od-line"><Bike size={14} /> {rider.vehicle?.number || rider.vehicle?.type || 'Rider'}
+                  {' · '}{rider.picked_up_at ? 'Picked up' : rider.reached_store_at ? 'At your store' : 'Coming to your store'}</p>
+                {!rider.picked_up_at && order.status !== 'cancelled' && <p className="ad-od-note">Pack the order; the rider marks pickup and delivery from the rider app.</p>}
+              </>
+            ) : ['confirmed', 'packed'].includes(order.status) ? (
+              <p className="ad-muted">Looking for a nearby rider… Riders who are online see this order now.</p>
+            ) : (
+              <p className="ad-muted">{order.status === 'placed' ? 'Accept the order to send it to riders.' : 'No rider assigned.'}</p>
+            )}
           </div>
         </div>
 
@@ -109,7 +126,13 @@ export default function Orders() {
   const openId              = params.get('open')
 
   const load = useCallback(() => api.get('/api/admin/orders').then(setOrders).catch(e => setError(e.message)), [])
-  useEffect(() => { load() }, [load])
+  // New orders / rider pickup -> list auto update (every 8s + when the tab gets focus)
+  useEffect(() => {
+    load()
+    const t = setInterval(load, 8000)
+    window.addEventListener('focus', load)
+    return () => { clearInterval(t); window.removeEventListener('focus', load) }
+  }, [load])
 
   const counts = useMemo(() => Object.fromEntries(TABS.map(t => [t.id, (orders || []).filter(o => t.match(o.status)).length])), [orders])
   const list = useMemo(() => {
@@ -150,7 +173,7 @@ export default function Orders() {
               <thead><tr><th>Order</th><th>Customer</th><th>Items</th><th>Total</th><th>Payment</th><th>Status</th><th>Placed</th><th /></tr></thead>
               <tbody>
                 {list.map(o => {
-                  const next = NEXT_ACTIONS[o.status]?.[0]
+                  const next = actionsFor(o)[0]
                   return (
                     <tr key={o.id} className="clickable" onClick={() => setOpen(o.id)}>
                       <td className="mono">#{o.order_number}</td>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import Navbar      from './components/Navbar.jsx'
 import CartDrawer  from './components/CartDrawer.jsx'
@@ -9,13 +9,37 @@ import Shops       from './pages/Shops.jsx'
 import Offers      from './pages/Offers.jsx'
 import Contact     from './pages/Contact.jsx'
 import Account     from './pages/Account.jsx'
+import Track       from './pages/Track.jsx'
 import { getProduct, loadCatalog } from './data/products.js'
 import { loadOrders, placeOrder } from './utils/orderHistory.js'
 import { useAuth } from '../shared/context/AuthContext.jsx'
-import FullPageLoader from '../shared/components/FullPageLoader.jsx'
+import HomeSkeleton from './components/HomeSkeleton.jsx'
 import './customer.css'
 
 const CART_KEY = 'freshmart_cart'
+const LIVE = ['placed', 'confirmed', 'packed', 'out_for_delivery']
+
+function statusMessage(o) {
+  const rider = o.partner?.name?.split(' ')[0]
+  switch (o.status) {
+    case 'confirmed': return `${o.store_name} accepted your order #${o.order_number}`
+    case 'packed': return `Order #${o.order_number} is packed`
+    case 'out_for_delivery': return `${rider || 'Your rider'} picked up your order and is on the way`
+    case 'delivered': return `Order #${o.order_number} delivered. Enjoy!`
+    case 'cancelled': return `Order #${o.order_number} was cancelled`
+    default: return ''
+  }
+}
+function askNotifyPermission() {
+  try { if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission() } catch { /* not supported */ }
+}
+function notify(text, orderId) {
+  try {
+    if (!('Notification' in window) || Notification.permission !== 'granted' || document.visibilityState === 'visible') return
+    const n = new Notification('FreshMart', { body: text, tag: `order-${orderId}` })
+    n.onclick = () => { window.focus(); window.location.assign(`/track/${orderId}`) }
+  } catch { /* not supported */ }
+}
 const readCart = () => { try { return JSON.parse(localStorage.getItem(CART_KEY)) || {} } catch { return {} } }
 
 export default function CustomerApp() {
@@ -59,6 +83,43 @@ export default function CustomerApp() {
     try { localStorage.setItem(CART_KEY, JSON.stringify(cart)) } catch { /* storage blocked */ }
   }, [cart])
 
+  // Live orders irundha 5s ku oru thadava status check pannuvom (tab ku thirumba vandhalum udane).
+  // Status maarina (eg. rider picked up) toast + browser notification.
+  const lastStatus = useRef(null)
+  const [toast, setToast] = useState(null)
+  const hasLive = orders.some(o => LIVE.includes(o.raw.status))
+  useEffect(() => {
+    const prev = lastStatus.current
+    const now = Object.fromEntries(orders.map(o => [o.id, o.raw.status]))
+    lastStatus.current = now
+    if (!prev) return
+    for (const o of orders) {
+      const was = prev[o.id]
+      if (!was || was === o.raw.status) continue
+      const msg = statusMessage(o.raw)
+      if (!msg) continue
+      setToast({ id: o.id, text: msg })   // eslint-disable-line react-hooks/set-state-in-effect
+      notify(msg, o.id)
+    }
+  }, [orders])
+  useEffect(() => {
+    const sync = () => { loadOrders().then(setOrders).catch(() => {}) }
+    const onShow = () => { if (document.visibilityState === 'visible') sync() }
+    window.addEventListener('focus', sync)
+    document.addEventListener('visibilitychange', onShow)
+    const t = hasLive ? setInterval(sync, 5000) : null   // live order: every 5s
+    return () => {
+      clearInterval(t)
+      window.removeEventListener('focus', sync)
+      document.removeEventListener('visibilitychange', onShow)
+    }
+  }, [hasLive])
+  useEffect(() => {
+    if (!toast) return
+    const t = setTimeout(() => setToast(null), 6000)
+    return () => clearTimeout(t)
+  }, [toast])
+
   // stock ku mela add panna mudiyaadhu
   const canAdd = (id, current) => {
     const p = getProduct(id)
@@ -77,6 +138,7 @@ export default function CustomerApp() {
   // Order place -> backend. Error vandha CheckoutPage la kaattum (throw).
   const handlePlaceOrder = async (payload) => {
     const result = await placeOrder(payload)
+    askNotifyPermission()
     clearCart()
     refresh().catch(() => {})
     return result
@@ -98,7 +160,7 @@ export default function CustomerApp() {
       </div>
     )
   }
-  if (!ready) return <FullPageLoader label="Loading fresh products…" />
+  if (!ready) return <HomeSkeleton />
 
   const cartProps = { cart, addToCart, increment, decrement, removeItem }
 
@@ -138,8 +200,16 @@ export default function CustomerApp() {
         <Route path="/shops"    element={<Shops />} />
         <Route path="/offers"   element={<Offers {...cartProps} onBrowse={setActiveCat} />} />
         <Route path="/contact"  element={<Contact />} />
+        <Route path="/track/:orderId" element={<Track />} />
         <Route path="*"         element={<Navigate to="/" replace />} />
       </Routes>
+
+      {toast && (
+        <div className="fm-toast" role="status">
+          <span>{toast.text}</span>
+          <button onClick={() => { navigate(`/track/${toast.id}`); setToast(null) }}>Track</button>
+        </div>
+      )}
 
       <CartDrawer
         isOpen={drawerOpen}

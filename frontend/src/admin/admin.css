@@ -298,3 +298,7 @@ textarea.ad-input { resize: vertical; }
 @media (prefers-reduced-motion: reduce) {
   .ad-side, .ad-bar, .ad-switch::after, .ad-mini-switch span::after { transition: none; }
 }
+.ad-od-grid > .ad-od-box:nth-child(3) { grid-column: 1 / -1; }
+.ad-pin { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 6px; padding: 10px 12px; border: 1px dashed var(--ad-line, #d1d5db); border-radius: 10px; }
+.ad-pin span { font-size: 13px; color: #6b7280; font-weight: 500; }
+.ad-pin span.ok { color: #007a50; font-weight: 700; font-family: ui-monospace, monospace; }

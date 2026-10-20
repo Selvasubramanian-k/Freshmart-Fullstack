@@ -11,7 +11,13 @@ export default function Dashboard() {
   const [d, setD] = useState(null)
   const [error, setError] = useState('')
 
-  useEffect(() => { api.get('/api/admin/dashboard').then(setD).catch(e => setError(e.message)) }, [])
+  useEffect(() => {
+    const load = () => api.get('/api/admin/dashboard').then(setD).catch(e => setError(e.message))
+    load()
+    const t = setInterval(load, 15000)
+    window.addEventListener('focus', load)
+    return () => { clearInterval(t); window.removeEventListener('focus', load) }
+  }, [])
 
   if (error) return <ErrorNote>{error}</ErrorNote>
   if (!d) return <p className="ad-muted">Loading dashboard…</p>

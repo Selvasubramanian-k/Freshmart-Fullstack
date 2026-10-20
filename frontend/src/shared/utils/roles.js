@@ -2,6 +2,7 @@
 export const HOME_BY_ROLE = {
   customer: '/',
   admin: '/admin',
+  delivery: '/delivery',
 }
 
 export const homeFor = (role) => HOME_BY_ROLE[role] || '/login'

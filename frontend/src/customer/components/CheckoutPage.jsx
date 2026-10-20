@@ -3,6 +3,7 @@ import { getProduct, DELIVERY } from '../data/products.js'
 import ProductImage from './ProductImage.jsx'
 import Icon from './Icon.jsx'
 import { readAddrs, saveAddrs } from '../utils/addresses.js'
+import PlacingOrder from './PlacingOrder.jsx'
 
 // ─────────────────────────────────────────────────────────────
 //  Timeline checkout: Address -> Time & tip -> Payment (slide to pay)
@@ -70,6 +71,7 @@ function CheckoutPage({ cart, user, onBack, onPlaceOrder, increment, decrement }
   const [saved, setSaved]       = useState(() => readAddrs(user))
   const [addrId, setAddrId]     = useState(() => { const s = readAddrs(user); return s.length ? s[0].id : 'new' })
   const [newAddr, setNewAddr]   = useState({ label: 'Home', text: '' })
+  const [locating, setLocating] = useState('')   // '' | 'busy' | 'ok' | error text
   const [instr, setInstr]       = useState({})
 
   // time & tip
@@ -122,13 +124,26 @@ function CheckoutPage({ cart, user, onBack, onPlaceOrder, increment, decrement }
     setError('')
     if (addrId === 'new') {
       if (!newAddr.text.trim()) { setError('Please enter your delivery address.'); return }
-      const entry = { id: Date.now(), label: newAddr.label, text: newAddr.text.trim() }
+      const entry = { id: Date.now(), label: newAddr.label, text: newAddr.text.trim(),
+        ...(Number.isFinite(newAddr.lat) ? { lat: newAddr.lat, lng: newAddr.lng } : {}) }
       const next = [...saved, entry]
       setSaved(next); saveAddrs(user, next)
       setAddrId(entry.id)
       setNewAddr({ label: 'Home', text: '' })
+      setLocating('')
     }
     setStep(2)
+  }
+
+  // GPS pin -> rider ku exact location theriyum (map la home pin)
+  const useMyLocation = () => {
+    if (!navigator.geolocation) { setLocating('Location is not supported on this browser.'); return }
+    setLocating('busy')
+    navigator.geolocation.getCurrentPosition(
+      (p) => { setNewAddr(a => ({ ...a, lat: p.coords.latitude, lng: p.coords.longitude })); setLocating('ok') },
+      () => setLocating('Could not get your location. Please allow location access.'),
+      { enableHighAccuracy: true, timeout: 10000 },
+    )
   }
 
   // ── step 3: pay ──
@@ -168,7 +183,8 @@ function CheckoutPage({ cart, user, onBack, onPlaceOrder, increment, decrement }
     const cardDigits = card.no.replace(/\s/g, '')
     onPlaceOrder({
       items: entries.map(([id, q]) => ({ pid: Number(id), quantity: q })),
-      address: { label: addr?.label || 'Home', text: addr?.text || '' },
+      address: { label: addr?.label || 'Home', text: addr?.text || '',
+        ...(Number.isFinite(addr?.lat) ? { lat: addr.lat, lng: addr.lng } : {}) },
       instructions: instrList,
       slot,
       tip,
@@ -201,6 +217,7 @@ function CheckoutPage({ cart, user, onBack, onPlaceOrder, increment, decrement }
 
   return (
     <div className="ck-page">
+      {placing && <PlacingOrder cod={isCOD} />}
       <button className="ck-back" onClick={onBack}>← Back to Shop</button>
       <div className="ck-top"><h1 className="ck-title">Checkout</h1><span className="ck-secure"><Icon name="lock" /> Secure payment</span></div>
 
@@ -293,6 +310,10 @@ function CheckoutPage({ cart, user, onBack, onPlaceOrder, increment, decrement }
                   value={newAddr.text}
                   onChange={(e) => setNewAddr(a => ({ ...a, text: e.target.value }))}
                 />
+                <button type="button" className={`ck-locate ${locating === 'ok' ? 'ok' : ''}`} onClick={useMyLocation} disabled={locating === 'busy'}>
+                  <Icon name="map-pin" /> {locating === 'busy' ? 'Getting location…' : locating === 'ok' ? 'Location pinned ✓ (helps the rider find you)' : 'Use my current location'}
+                </button>
+                {locating && !['busy', 'ok'].includes(locating) && <p className="ck-locate-err">{locating}</p>}
               </div>
             )}
 

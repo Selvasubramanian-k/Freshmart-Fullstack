@@ -11,6 +11,35 @@
 }
 @keyframes fm-spin { to { transform: rotate(360deg); } }
 
+/* ══════════ PRODUCE LOADER (design A) ══════════ */
+.fm-produce {
+  position: fixed; inset: 0; z-index: 9999; background: #f2f7f4;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+  padding: 24px; text-align: center; font-family: 'Montserrat', sans-serif;
+  opacity: 0; animation: fm-in .25s ease-out .15s forwards; /* quick loads don't flash */
+}
+.fm-produce-row { display: flex; align-items: flex-end; gap: 30px; height: 110px; margin-bottom: 14px; }
+.fm-produce-item { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.fm-produce-bounce { animation: fm-bounce 1.2s ease-in-out infinite; animation-delay: var(--d); }
+.fm-produce-shadow {
+  width: 40px; height: 8px; border-radius: 50%; background: #0b3d2e;
+  animation: fm-shadow 1.2s ease-in-out infinite; animation-delay: var(--d);
+}
+.fm-produce-title { margin: 0; font-size: 22px; font-weight: 800; color: #007a50; }
+.fm-produce-tip { margin: 0; font-size: 14px; font-weight: 600; color: #4b5563; animation: fm-tip 3s ease-in-out; }
+@keyframes fm-in { to { opacity: 1; } }
+@keyframes fm-bounce { 0%, 100% { transform: translateY(0) } 40%, 60% { transform: translateY(-34px) } }
+@keyframes fm-shadow { 0%, 100% { transform: scaleX(1); opacity: .35 } 50% { transform: scaleX(.55); opacity: .15 } }
+@keyframes fm-tip { 0% { opacity: 0; transform: translateY(6px) } 15%, 85% { opacity: 1; transform: none } 100% { opacity: 0 } }
+@media (max-width: 480px) {
+  .fm-produce-row { gap: 16px; }
+  .fm-produce-row svg { width: 44px; height: 44px; }
+  .fm-produce-title { font-size: 18px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fm-produce, .fm-produce-bounce, .fm-produce-shadow, .fm-produce-tip { animation: none; opacity: 1; }
+}
+
 .login-card-wide { max-width: 460px; }
 .login-pw { position: relative; display: flex; }
 .login-pw .login-input { flex: 1; padding-right: 64px; }
@@ -44,7 +73,7 @@ a.login-google-btn { text-decoration: none; color: var(--text); justify-content:
 .reg3-head p { margin: 0; font-size: 14px; color: #5b6472; }
 .reg3-logo { width: 52px; height: 52px; border-radius: 16px; background: #007a50; display: grid; place-items: center; }
 
-.reg3-roles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.reg3-roles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .reg3-role {
   position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px;
   padding: 18px 12px 16px; border: 1.5px solid var(--border); border-radius: 18px; background: #fff;
@@ -112,6 +141,10 @@ a.login-google-btn { text-decoration: none; color: var(--text); justify-content:
   .reg3-page { padding: 16px 12px; }
   .reg3-card { padding: 26px 20px; border-radius: 22px; }
   .reg3-row { grid-template-columns: 1fr; }
+  .reg3-roles { gap: 8px; }
+  .reg3-role { padding: 14px 6px 12px; }
+  .reg3-role svg { width: 52px; height: 52px; }
+  .reg3-role b { font-size: 13.5px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .reg3-role, .reg3-field, .reg3-submit { transition: none; }

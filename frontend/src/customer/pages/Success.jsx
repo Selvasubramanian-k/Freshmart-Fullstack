@@ -12,7 +12,7 @@ export default function Success() {
     <OrderSuccess
       result={result}
       onBack={() => navigate('/')}
-      onTrack={() => navigate('/account')}
+      onTrack={() => navigate(result.orders?.length === 1 ? `/track/${result.orders[0].id}` : '/account')}
     />
   )
 }

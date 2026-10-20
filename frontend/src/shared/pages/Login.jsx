@@ -31,7 +31,8 @@ export default function Login() {
       const from = location.state?.from
       const home = homeFor(u.role)
       // same role area ku mattum thirumba anuppum (customer -> /admin poga koodadhu)
-      const back = from && (u.role === 'admin' ? from.startsWith('/admin') : !from.startsWith('/admin'))
+      const area = (p) => (p.startsWith('/admin') ? 'admin' : p.startsWith('/delivery') ? 'delivery' : 'customer')
+      const back = from && area(from) === u.role
       navigate(back ? from : home, { replace: true })
     } catch (err) {
       setError(err.message)
@@ -44,7 +45,7 @@ export default function Login() {
       <form className="login-form" onSubmit={submit} noValidate>
         <div className="login-head">
           <h2 className="login-title">Welcome back</h2>
-          <p className="login-sub">Sign in to continue. Customers and store owners use the same login.</p>
+          <p className="login-sub">Sign in to continue. Customers, store owners and delivery partners use the same login.</p>
         </div>
 
         <input
@@ -84,6 +85,7 @@ export default function Login() {
           <b>Demo logins</b> (after running <code>python seed.py</code>)
           <span>Customer: customer@freshmart.com / customer123</span>
           <span>Store admin: admin@freshmart.com / admin123</span>
+          <span>Delivery: rider@freshmart.com / rider123</span>
         </div>
       </form>
     </AuthShell>
