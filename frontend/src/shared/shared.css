@@ -149,3 +149,8 @@ a.login-google-btn { text-decoration: none; color: var(--text); justify-content:
 @media (prefers-reduced-motion: reduce) {
   .reg3-role, .reg3-field, .reg3-submit { transition: none; }
 }
+
+.login-remember { display: grid; grid-template-columns: auto 1fr; column-gap: 10px; align-items: center; font-size: 14px; font-weight: 600; color: var(--text); cursor: pointer; }
+.login-remember input { width: 18px; height: 18px; accent-color: #00a870; margin: 0; }
+.login-remember small { grid-column: 2; font-size: 12px; font-weight: 500; color: #5b6472; }
+.login-demo a { color: #007a50; font-weight: 700; text-decoration: none; margin-top: 4px; }

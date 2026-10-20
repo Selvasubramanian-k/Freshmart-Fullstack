@@ -10,6 +10,9 @@ import FullPageLoader from './shared/components/FullPageLoader.jsx'
 const CustomerApp = lazy(() => import('./customer/CustomerApp.jsx'))
 const AdminApp    = lazy(() => import('./admin/AdminApp.jsx'))
 const DeliveryApp = lazy(() => import('./delivery/DeliveryApp.jsx'))
+// Demo view: customer + admin + rider on one screen. Only in `npm run dev` (not in the Vercel build).
+const DemoView  = import.meta.env.DEV ? lazy(() => import('./demo/DemoView.jsx')) : null
+const DemoLogin = import.meta.env.DEV ? lazy(() => import('./demo/DemoLogin.jsx')) : null
 
 // ─────────────────────────────────────────────────────────────
 //  Root router.  /login + /register -> everyone (ore login, role based redirect)
@@ -25,6 +28,8 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        {DemoView && <Route path="/demo" element={<DemoView />} />}
+        {DemoLogin && <Route path="/demo/as/:role" element={<DemoLogin />} />}
         <Route path="/admin/*" element={<RequireRole role="admin"><AdminApp /></RequireRole>} />
         <Route path="/delivery/*" element={<RequireRole role="delivery"><DeliveryApp /></RequireRole>} />
         <Route path="/*" element={<RequireRole role="customer"><CustomerApp /></RequireRole>} />

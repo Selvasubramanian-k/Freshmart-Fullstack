@@ -17,6 +17,7 @@ export default function Login() {
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
   const [showPw, setShowPw]     = useState(false)
+  const [remember, setRemember] = useState(true)
   const [error, setError]       = useState('')
   const [loading, setLoading]   = useState(false)
 
@@ -27,7 +28,7 @@ export default function Login() {
     if (!email.trim() || !password) { setError('Please enter your email and password.'); return }
     setLoading(true); setError('')
     try {
-      const u = await login(email.trim(), password)
+      const u = await login(email.trim(), password, remember)
       const from = location.state?.from
       const home = homeFor(u.role)
       // same role area ku mattum thirumba anuppum (customer -> /admin poga koodadhu)
@@ -72,6 +73,11 @@ export default function Login() {
             {showPw ? 'Hide' : 'Show'}
           </button>
         </div>
+        <label className="login-remember">
+          <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
+          Remember me on this device
+          <small>Each tab keeps its own login, so you can test customer, admin and rider side by side</small>
+        </label>
         {error && <p className="login-error" role="alert">{error}</p>}
 
         <button type="submit" className="login-btn" disabled={loading}>
@@ -86,6 +92,7 @@ export default function Login() {
           <span>Customer: customer@freshmart.com / customer123</span>
           <span>Store admin: admin@freshmart.com / admin123</span>
           <span>Delivery: rider@freshmart.com / rider123</span>
+          {import.meta.env.DEV && <Link to="/demo">Open demo view (all 3 apps on one screen) →</Link>}
         </div>
       </form>
     </AuthShell>
