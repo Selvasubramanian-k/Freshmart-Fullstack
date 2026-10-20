@@ -22,6 +22,8 @@ function OrderDetail({ order, onClose, onUpdated }) {
   const rider = order.partner
 
   const move = async (to) => {
+    const act = actions.find(a => a.to === to)
+    if (act?.confirm && !window.confirm(act.confirm)) return
     let note = null
     if (to === 'cancelled') {
       note = window.prompt('Reason for cancelling (shown to the customer):', 'Item not available')
@@ -67,7 +69,7 @@ function OrderDetail({ order, onClose, onUpdated }) {
                 {!rider.picked_up_at && order.status !== 'cancelled' && <p className="ad-od-note">Pack the order; the rider marks pickup and delivery from the rider app.</p>}
               </>
             ) : ['confirmed', 'packed'].includes(order.status) ? (
-              <p className="ad-muted">Looking for a nearby rider… Riders who are online see this order now.</p>
+              <p className="ad-muted">Looking for a nearby rider… Riders who are online see this order now. Wait for a rider to accept before it leaves the store.</p>
             ) : (
               <p className="ad-muted">{order.status === 'placed' ? 'Accept the order to send it to riders.' : 'No rider assigned.'}</p>
             )}
@@ -105,7 +107,7 @@ function OrderDetail({ order, onClose, onUpdated }) {
         {actions.length > 0 && (
           <div className="ad-form-actions">
             {actions.map(a => (
-              <button key={a.to} className={`ad-btn ${a.danger ? 'danger ghost' : ''}`} disabled={Boolean(busy)} onClick={() => move(a.to)}>
+              <button key={a.to} className={`ad-btn ${a.danger ? 'danger ghost' : a.ghost ? 'ghost' : ''}`} disabled={Boolean(busy)} onClick={() => move(a.to)}>
                 {busy === a.to ? 'Updating…' : a.label}
               </button>
             ))}
@@ -173,7 +175,7 @@ export default function Orders() {
               <thead><tr><th>Order</th><th>Customer</th><th>Items</th><th>Total</th><th>Payment</th><th>Status</th><th>Placed</th><th /></tr></thead>
               <tbody>
                 {list.map(o => {
-                  const next = actionsFor(o)[0]
+                  const next = o.status === 'packed' && !o.partner ? { label: 'Waiting for rider' } : actionsFor(o)[0]
                   return (
                     <tr key={o.id} className="clickable" onClick={() => setOpen(o.id)}>
                       <td className="mono">#{o.order_number}</td>

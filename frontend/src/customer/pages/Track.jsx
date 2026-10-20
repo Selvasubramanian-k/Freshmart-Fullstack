@@ -25,7 +25,9 @@ function headline(t, etaMin) {
       if (!t.partner) return { title: t.status === 'packed' ? 'Packed! Finding a rider' : 'Store is packing your order', sub: 'We are assigning a delivery partner near the store' }
       return { title: `${name} is heading to the store`, sub: t.status === 'packed' ? 'Your order is packed and waiting' : 'The store is packing your order' }
     case 'out_for_delivery':
-      return { title: etaMin != null ? `Arriving in ${fmtMin(etaMin)}` : 'On the way to you', sub: `${name} picked up your order` }
+      if (!t.partner) return { title: 'On the way', sub: `${t.store?.name || 'The store'} staff is delivering your order` }
+      return { title: etaMin != null ? `Arriving in ${fmtMin(etaMin)}` : 'On the way to you',
+        sub: name ? `${name} picked up your order` : 'The store is delivering your order' }
     case 'delivered': return { title: 'Delivered', sub: 'Enjoy your groceries!' }
     case 'cancelled': return { title: 'Order cancelled', sub: 'This order will not be delivered' }
     default: return { title: t.status.replaceAll('_', ' '), sub: '' }
@@ -160,6 +162,8 @@ export default function Track() {
         {p && live && !rider && (
           <p className="tk-wait">{p.name.split(' ')[0]}'s live location will show here once they start riding.</p>
         )}
+
+        {toYou && !p && <p className="tk-wait">The store's own staff is bringing this order, so live location isn't available.</p>}
 
         {t?.delivery_code && live && (
           <div className="tk-code">

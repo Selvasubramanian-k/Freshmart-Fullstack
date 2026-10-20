@@ -21,7 +21,10 @@ export const ORDER_STATUS = {
 export const NEXT_ACTIONS = {
   placed:           [{ to: 'confirmed', label: 'Accept order' }, { to: 'cancelled', label: 'Reject', danger: true }],
   confirmed:        [{ to: 'packed', label: 'Mark packed' }, { to: 'cancelled', label: 'Cancel', danger: true }],
-  packed:           [{ to: 'out_for_delivery', label: 'Send for delivery' }, { to: 'cancelled', label: 'Cancel', danger: true }],
+  // Normally a delivery partner picks it up. "Deliver ourselves" = store staff delivers (no live tracking).
+  packed:           [{ to: 'out_for_delivery', label: 'Deliver ourselves (no rider)', ghost: true,
+                       confirm: 'No delivery partner will be used and the customer will not see live tracking. Your own staff will deliver this order. Continue?' },
+                     { to: 'cancelled', label: 'Cancel', danger: true }],
   out_for_delivery: [{ to: 'delivered', label: 'Mark delivered' }],
 }
 
