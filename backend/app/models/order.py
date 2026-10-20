@@ -53,6 +53,8 @@ class OrderItemIn(BaseModel):
 class DeliveryAddress(BaseModel):
     label: str = Field(default="Home", max_length=20)
     text: str = Field(..., min_length=5, max_length=300)
+    lat: float | None = Field(default=None, ge=-90, le=90)
+    lng: float | None = Field(default=None, ge=-180, le=180)
 
 
 class CardInfo(BaseModel):

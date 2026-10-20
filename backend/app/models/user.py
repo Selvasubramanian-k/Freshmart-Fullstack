@@ -10,8 +10,20 @@ PHONE_PATTERN = r"^[6-9]\d{9}$"
 
 class Role(str, Enum):
     CUSTOMER = "customer"
-    ADMIN = "admin"  # Shop Owner / Store Admin
-    # Future roles: delivery, super_admin, picker, support
+    ADMIN = "admin"        # Shop Owner / Store Admin
+    DELIVERY = "delivery"  # Delivery Partner
+    # Future roles: super_admin, picker, support
+
+
+class VehicleType(str, Enum):
+    BIKE = "bike"
+    SCOOTER = "scooter"
+    CYCLE = "cycle"
+
+
+class Vehicle(BaseModel):
+    type: VehicleType = VehicleType.SCOOTER
+    number: str = Field(default="", max_length=15)   # cycle: can be empty
 
 
 class RegisterRequest(BaseModel):
@@ -24,6 +36,9 @@ class RegisterRequest(BaseModel):
     address: Address | None = None
     # admin only
     store: StoreCreate | None = None
+    # delivery partner only
+    vehicle: Vehicle | None = None
+    city: str | None = Field(default=None, max_length=60)
 
     @model_validator(mode="after")
     def check_role_details(self):
@@ -31,6 +46,11 @@ class RegisterRequest(BaseModel):
             raise ValueError("Address is required for customer registration")
         if self.role == Role.ADMIN and self.store is None:
             raise ValueError("Store details are required for admin registration")
+        if self.role == Role.DELIVERY:
+            if self.vehicle is None:
+                raise ValueError("Vehicle details are required for delivery partners")
+            if self.vehicle.type != VehicleType.CYCLE and len(self.vehicle.number.strip()) < 4:
+                raise ValueError("Please enter your vehicle number")
         return self
 
 

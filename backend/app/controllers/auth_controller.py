@@ -34,6 +34,12 @@ async def register(data: RegisterRequest) -> dict:
     }
     if data.role == Role.CUSTOMER:
         user_doc["address"] = data.address.model_dump()
+    if data.role == Role.DELIVERY:
+        user_doc["vehicle"] = {"type": data.vehicle.type.value, "number": data.vehicle.number.strip().upper()}
+        user_doc["city"] = (data.city or "").strip()
+        user_doc["is_online"] = False
+        user_doc["active_order_id"] = None
+        user_doc["location"] = None
 
     try:
         result = await db.users.insert_one(user_doc)

@@ -1,5 +1,5 @@
 from app.config import settings
-from app.controllers.order_controller import store_earnings
+from app.controllers.order_controller import hide_code, store_earnings
 from app.controllers.store_controller import get_admin_store_doc
 from app.database import get_db
 from app.utils.helpers import now_utc, serialize
@@ -39,5 +39,5 @@ async def admin_dashboard(admin: dict) -> dict:
         "net_earnings": earnings["net_earnings"],
         "daily": earnings["daily"],
         "low_stock": serialize(low_stock),
-        "recent_orders": serialize(recent),
+        "recent_orders": hide_code(serialize(recent)),
     }

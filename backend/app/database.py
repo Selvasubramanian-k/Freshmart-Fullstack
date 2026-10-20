@@ -41,3 +41,5 @@ async def create_indexes() -> None:
     await db.orders.create_index([("store_id", ASCENDING), ("status", ASCENDING)])
     await db.complaints.create_index([("store_id", ASCENDING), ("status", ASCENDING)])
     await db.staff.create_index([("store_id", ASCENDING)])
+    await db.orders.create_index([("status", ASCENDING), ("partner", ASCENDING)])
+    await db.orders.create_index([("partner.id", ASCENDING), ("delivered_at", DESCENDING)])

@@ -17,6 +17,15 @@ from app.utils.pricing import compute_bill, split_share, validate_coupon
 BILL_KEYS = ["delivery_fee", "tip", "coupon_discount", "payment_discount", "cashback"]
 
 
+def hide_code(doc):
+    """The 4-digit delivery code is only for the customer; store and rider must not see it."""
+    if isinstance(doc, list):
+        return [hide_code(d) for d in doc]
+    doc = dict(doc)
+    doc.pop("delivery_code", None)
+    return doc
+
+
 def _order_number() -> str:
     return f"FM{now_utc():%y%m%d}{secrets.token_hex(3).upper()}"
 
@@ -133,6 +142,9 @@ async def place_order(customer: dict, data: OrderCreate) -> dict:
             "slot": data.slot,
             "status": "placed",
             "status_history": [{"status": "placed", "at": now, "note": "Order placed"}],
+            "delivery_code": f"{secrets.randbelow(10000):04d}",
+            "partner": None,          # filled when a delivery partner accepts
+            "rider_location": None,
             "created_at": now,
             "updated_at": now,
         }
@@ -181,6 +193,11 @@ async def _apply_cancel(order: dict, note: str) -> None:
         {"$set": updates, "$push": {"status_history": {"status": "cancelled", "at": now, "note": note}}},
     )
     await _restock(order)
+    if order.get("partner"):  # free the rider
+        await db.users.update_one(
+            {"_id": ObjectId(order["partner"]["id"]), "active_order_id": order["_id"]},
+            {"$set": {"active_order_id": None}},
+        )
 
 
 # ======================= Store admin =======================
@@ -195,7 +212,7 @@ async def store_orders(admin: dict, status_filter: str | None = None, q: str | N
             {"customer_name": {"$regex": re.escape(q), "$options": "i"}},
         ]
     docs = await get_db().orders.find(query).sort("created_at", -1).to_list(500)
-    return serialize(docs)
+    return hide_code(serialize(docs))
 
 
 async def update_order_status(admin: dict, order_id: str, data: OrderStatusUpdate) -> dict:
@@ -208,6 +225,11 @@ async def update_order_status(admin: dict, order_id: str, data: OrderStatusUpdat
     new = data.status.value
     if new not in ALLOWED_TRANSITIONS.get(order["status"], []):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Cannot move order from '{order['status']}' to '{new}'")
+    if order.get("partner") and new in ("out_for_delivery", "delivered"):
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            f"{order['partner']['name']} (delivery partner) will update this step from the rider app",
+        )
 
     if new == "cancelled":
         await _apply_cancel(order, f"Cancelled by store{': ' + data.note if data.note else ''}")
@@ -223,7 +245,7 @@ async def update_order_status(admin: dict, order_id: str, data: OrderStatusUpdat
             {"_id": order["_id"]},
             {"$set": updates, "$push": {"status_history": {"status": new, "at": now, "note": data.note}}},
         )
-    return serialize(await db.orders.find_one({"_id": order["_id"]}))
+    return hide_code(serialize(await db.orders.find_one({"_id": order["_id"]})))
 
 
 async def store_earnings(admin: dict, days: int = 7) -> dict:

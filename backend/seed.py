@@ -31,12 +31,21 @@ CUSTOMER = {
     "phone": "9123456780",
     "password": "customer123",
     "address": {"line1": "No. 12, Gandhi Street, T Nagar", "city": "Chennai", "state": "Tamil Nadu",
-                "pincode": "600017", "line2": None, "landmark": "Near Pondy Bazaar"},
+                "pincode": "600017", "line2": None, "landmark": "Near Pondy Bazaar",
+                "lat": 13.0418, "lng": 80.2341},
+}
+RIDER = {
+    "name": "Ravi Kumar",
+    "email": "rider@freshmart.com",
+    "phone": "9840098400",
+    "password": "rider123",
+    "vehicle": {"type": "scooter", "number": "TN09AB1234"},
 }
 STORE = {
     "name": "FreshMart Chennai",
     "address": {"line1": "45, 2nd Avenue, Anna Nagar", "city": "Chennai", "state": "Tamil Nadu",
-                "pincode": "600040", "line2": None, "landmark": None},
+                "pincode": "600040", "line2": None, "landmark": None,
+                "lat": 13.0850, "lng": 80.2101},
     "gst_number": "33ABCDE1234F1Z5",
     "category": "Grocery",
     "open_time": "08:00",
@@ -74,6 +83,20 @@ async def main(reset: bool) -> None:
             "is_active": True, "created_at": now_utc(),
         })
 
+    # ---- delivery partner ----
+    if not await db.users.find_one({"email": RIDER["email"]}):
+        await db.users.insert_one({
+            "name": RIDER["name"], "email": RIDER["email"], "phone": RIDER["phone"], "role": "delivery",
+            "vehicle": RIDER["vehicle"], "city": "Chennai", "is_online": False, "active_order_id": None,
+            "location": None, "password_hash": hash_password(RIDER["password"]),
+            "is_active": True, "created_at": now_utc(),
+        })
+    # older seeded store without map location -> add it
+    await db.stores.update_one(
+        {"_id": store["_id"], "address.lat": None},
+        {"$set": {"address.lat": STORE["address"]["lat"], "address.lng": STORE["address"]["lng"]}},
+    )
+
     # ---- products ----
     if await db.products.count_documents({"store_id": store["_id"]}) == 0:
         rng = random.Random(7)
@@ -104,6 +127,7 @@ async def main(reset: bool) -> None:
     print("\nDemo logins (same login page for both):")
     print(f"  Store admin : {ADMIN['email']} / {ADMIN['password']}")
     print(f"  Customer    : {CUSTOMER['email']} / {CUSTOMER['password']}")
+    print(f"  Delivery    : {RIDER['email']} / {RIDER['password']}")
     await client.close()
 
 

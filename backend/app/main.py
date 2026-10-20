@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
 from app.database import close_db, connect_db
-from app.routes import admin_routes, auth_routes, customer_routes, public_routes
+from app.routes import admin_routes, auth_routes, customer_routes, delivery_routes, public_routes
 
 UPLOAD_DIR = Path(__file__).resolve().parents[1] / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
@@ -27,7 +27,7 @@ app = FastAPI(title="FreshMart API", version="1.0.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
-    allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:\d+)?",
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:\d+)?",  # any local dev port
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -61,6 +61,7 @@ app.include_router(auth_routes.router)
 app.include_router(public_routes.router)
 app.include_router(customer_routes.router)
 app.include_router(admin_routes.router)
+app.include_router(delivery_routes.router)
 
 
 @app.get("/api/health", tags=["Health"])
