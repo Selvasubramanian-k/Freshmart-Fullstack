@@ -32,6 +32,8 @@ export function RiderProvider({ children }) {
   const [pos, setPos] = useState(null)            // {lat, lng, heading, speed}
   const [gpsError, setGpsError] = useState('')
   const [simulating, setSimulating] = useState(false)
+  // once "Demo drive" is used, laptop GPS stays off (else the rider jumps back to the laptop's spot)
+  const [demoMode, setDemoMode] = useState(false)
   const lastPost = useRef(0)
   const simRef = useRef(null)
 
@@ -59,7 +61,7 @@ export function RiderProvider({ children }) {
 
   // real GPS while online (and not in demo drive)
   useEffect(() => {
-    if (!me?.is_online || simulating) return
+    if (!me?.is_online || simulating || demoMode) return
     if (!('geolocation' in navigator)) { setGpsError('This device has no GPS'); return }
     const id = navigator.geolocation.watchPosition(
       (g) => {
@@ -74,7 +76,7 @@ export function RiderProvider({ children }) {
       { enableHighAccuracy: true, maximumAge: 3000, timeout: 15000 },
     )
     return () => navigator.geolocation.clearWatch(id)
-  }, [me?.is_online, simulating, push])
+  }, [me?.is_online, simulating, demoMode, push])
 
   // demo drive along a route
   const stopSim = useCallback(() => {
@@ -87,6 +89,7 @@ export function RiderProvider({ children }) {
     if (!coords || coords.length < 2) return
     clearInterval(simRef.current)
     setSimulating(true)
+    setDemoMode(true)
     let total = 0
     for (let i = 0; i < coords.length - 1; i++) total += distanceKm({ lat: coords[i][0], lng: coords[i][1] }, { lat: coords[i + 1][0], lng: coords[i + 1][1] })
     const stepKm = Math.max(SIM_STEP_KM, total / 50)   // any trip finishes in ~50 s
@@ -105,7 +108,7 @@ export function RiderProvider({ children }) {
   const setOnline = useCallback(async (on) => {
     const r = await api.patch('/api/delivery/online', { is_online: on })
     setMe((m) => ({ ...m, is_online: r.is_online }))
-    if (!on) stopSim()
+    if (!on) { stopSim(); setDemoMode(false) }   // go offline -> back to real GPS next time
   }, [stopSim])
 
   const value = { me, setMe, refreshMe, setOnline, pos, setPos: push, gpsError, simulating, startSim, stopSim }

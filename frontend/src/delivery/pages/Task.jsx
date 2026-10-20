@@ -63,7 +63,8 @@ export default function Task({ onDone }) {
   // road route from the rider (or the store, if we don't know where the rider is) to the target
   useEffect(() => {
     if (!hasPoint(target)) return
-    const from = hasPoint(pos) ? pos : (stage === 'to_customer' ? store : null)
+    // no GPS yet (permission blocked / laptop): start from the store, or ~2 km away when going to the store
+    const from = hasPoint(pos) ? pos : (stage === 'to_customer' ? store : approxNear(store, 'rider-start'))
     if (!hasPoint(from)) { setRoute(null); return }
     const moved = routeFrom.current && distanceKm(routeFrom.current.p, from) > 0.15
     const changed = !routeFrom.current || routeFrom.current.target !== target
