@@ -1,18 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Check, ChevronRight, Phone, RefreshCw, ShieldCheck, Wallet, X } from 'lucide-react'
+import { ArrowLeft, Check, ChevronUp, Phone, RefreshCw, ShieldCheck, Wallet, X } from 'lucide-react'
 import { api } from '../../shared/api/client.js'
 import LiveMap from '../../shared/map/LiveMap.jsx'
 import DeliveredScreen from '../components/DeliveredScreen.jsx'
 import { curvePoints, distanceKm, fetchRoute, fmtKm, hasPoint, resolvePlace } from '../../shared/map/geo.js'
 
 // ─────────────────────────────────────────────────────────────
-//  Order tracking (design 1). Order pottavudane indha page varum:
-//  mela map (store -> home), adhu mela status card + ETA, "Order info".
+//  Order tracking. Order pottavudane indha page varum.
+//    Phone  (design A): full-screen map + pull-up sheet (tap to open rider / code / order info)
+//    Laptop (design B): white side panel on the left, map on the right (nothing on top of the map)
 //  Polls /api/customer/orders/:id/track every 4s.
 // ─────────────────────────────────────────────────────────────
 const POLL_MS = 4000
-const WIDE = typeof window !== 'undefined' && window.matchMedia('(min-width: 900px)').matches
+const WIDE_QUERY = '(min-width: 900px)'
 const VEHICLE = { bike: 'Bike', scooter: 'Scooter', cycle: 'Cycle' }
 const rs = (n) => `₹${Number(n || 0).toFixed(0)}`
 const toDate = (iso) => new Date(/Z$|[+-]\d\d:\d\d$/.test(iso) ? iso : `${iso}Z`)
@@ -39,18 +40,32 @@ function statusCard(t) {
   }
 }
 
+function useWide() {
+  const [wide, setWide] = useState(() => typeof window !== 'undefined' && window.matchMedia(WIDE_QUERY).matches)
+  useEffect(() => {
+    const mq = window.matchMedia(WIDE_QUERY)
+    const on = () => setWide(mq.matches)
+    mq.addEventListener('change', on)
+    return () => mq.removeEventListener('change', on)
+  }, [])
+  return wide
+}
+
 export default function Track() {
   const { orderId } = useParams()
   const navigate = useNavigate()
+  const wide = useWide()
   const [t, setT] = useState(null)
   const [error, setError] = useState('')
   const [store, setStore] = useState(null)
   const [drop, setDrop] = useState(null)
   const [route, setRoute] = useState(null)
-  const [info, setInfo] = useState(false)
+  const [open, setOpen] = useState(false)       // phone sheet expanded
   const [spin, setSpin] = useState(false)
   const [closed, setClosed] = useState(false)
+  const [sheetH, setSheetH] = useState(240)
   const routeFrom = useRef(null)
+  const sheetRef = useRef(null)
   const goHome = useCallback(() => { setClosed(true); navigate('/') }, [navigate])
 
   const load = useCallback(() => api.get(`/api/customer/orders/${orderId}/track`)
@@ -76,6 +91,15 @@ export default function Track() {
       .then((s) => { if (s) setStore(s); return resolvePlace(t.drop, s) })
       .then((p) => p && setDrop(p))
   }, [t?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // phone: keep the map buttons just above the sheet, whatever its height
+  useEffect(() => {
+    const el = sheetRef.current
+    if (!el || wide) return
+    const ro = new ResizeObserver(() => setSheetH(el.offsetHeight))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [wide, t?.id])
 
   const rider = hasPoint(t?.rider_location) ? t.rider_location : null
   const live = t && ['placed', 'confirmed', 'packed', 'out_for_delivery'].includes(t.status)
@@ -103,7 +127,7 @@ export default function Track() {
   else if (live) eta = (PREP_MIN[t.status] ?? 5) + rideMin(store, drop)
   const etaText = eta == null ? null : Math.max(1, Math.round(eta))
 
-  // until the rider is riding, show a curved dotted line store -> you (like an "order is coming" hint)
+  // until the rider is riding, show a curved dotted line store -> you
   const dotted = live && !toYou && !riderToStore
   const curve = useMemo(() => (dotted ? curvePoints(store, drop) : null), [dotted, store, drop])
 
@@ -131,9 +155,20 @@ export default function Track() {
   const stage = STAGE[t?.status] ?? -1
   const p = t?.partner
   const cod = t?.payment?.method === 'cod'
+  const showDetails = wide || open
+
+  const titleBlock = (
+    <div className="tr-title">
+      <b>{t?.store?.name || 'Your order'}</b>
+      {t && <span>{wide ? `#${t.order_number} · ` : ''}{hhmm(t.created_at)} · {t.items_count} item{t.items_count === 1 ? '' : 's'}</span>}
+    </div>
+  )
+  const backBtn = <button type="button" className="tr-round" onClick={() => navigate('/account')} aria-label="Back to my orders"><ArrowLeft size={20} /></button>
+  const refreshBtn = <button type="button" className={`tr-round ${spin ? 'spin' : ''}`} onClick={refresh} aria-label="Refresh status"><RefreshCw size={19} /></button>
 
   return (
-    <div className="tr-page">
+    <div className={`tr-page ${wide ? 'wide' : 'phone'}${!wide && open ? ' sheet-open' : ''}`} style={{ '--sheet-h': `${sheetH}px` }}>
+      {/* ── map ── */}
       <div className="tr-map">
         <LiveMap
           rider={live && p ? rider : null}
@@ -142,87 +177,92 @@ export default function Track() {
           route={dotted ? curve : live ? route?.coords : null}
           routeStyle={dotted ? 'dotted' : 'road'}
           routeColor={toYou ? '#00a870' : '#0b3d2e'}
-          fitPadding={WIDE ? { paddingTopLeft: [500, 90], paddingBottomRight: [70, 70] } : { paddingTopLeft: [40, 130], paddingBottomRight: [40, 130] }}
-          fitKey={`${t?.status}-${places.length}-${Boolean(rider)}-${Boolean(dotted ? curve : route)}`}
+          fitPadding={wide ? { padding: [70, 70] } : { paddingTopLeft: [40, 110], paddingBottomRight: [60, sheetH + 30] }}
+          fitKey={`${t?.status}-${places.length}-${Boolean(rider)}-${Boolean(dotted ? curve : route)}-${wide}`}
         />
+        {!wide && <div className="tr-top">{backBtn}{titleBlock}{refreshBtn}</div>}
       </div>
 
-      <div className="tr-top">
-        <button type="button" className="tr-round" onClick={() => navigate('/account')} aria-label="Back to my orders"><ArrowLeft size={20} /></button>
-        <div className="tr-title">
-          <b>{t?.store?.name || 'Your order'}</b>
-          {t && <span>{hhmm(t.created_at)} · {t.items_count} item{t.items_count === 1 ? '' : 's'}</span>}
-        </div>
-        <button type="button" className={`tr-round ${spin ? 'spin' : ''}`} onClick={refresh} aria-label="Refresh status"><RefreshCw size={19} /></button>
-      </div>
+      {/* ── side panel (laptop) / pull-up sheet (phone) ── */}
+      <aside ref={sheetRef} className={`tr-side ${open ? 'open' : ''}`} aria-live="polite">
+        {!wide && (
+          <button type="button" className="tr-grip" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-label={open ? 'Show less' : 'Show rider, code and order info'}>
+            <span />
+          </button>
+        )}
+        {wide && <div className="tr-side-top">{backBtn}{titleBlock}{refreshBtn}</div>}
 
-      <div className="tr-panel">
-        <section className={`tr-card ${t?.status === 'cancelled' ? 'bad' : ''}`} aria-live="polite">
-          {!info ? (
-            <>
-              <div className="tr-head">
-                <div>
-                  {card.kicker && (
-                    <span className="tr-kicker">
-                      {t?.status === 'cancelled' ? <X size={14} strokeWidth={3} /> : <Check size={14} strokeWidth={3.2} />}{card.kicker}
-                    </span>
-                  )}
-                  <h1>{card.title}</h1>
-                  <p>{card.sub}</p>
-                </div>
-                {etaText && <div className="tr-eta"><b>{etaText}</b><span>mins</span></div>}
-              </div>
-              {stage >= 0 && (
-                <div className="tr-bars" aria-label={`Step ${Math.min(stage, 3) + 1} of 4`}>
-                  {[0, 1, 2, 3].map((i) => <span key={i} className={i <= Math.min(stage, 3) ? 'on' : ''} />)}
-                </div>
+        <section className={`tr-status ${t?.status === 'cancelled' ? 'bad' : ''}`}>
+          <div className="tr-head">
+            <div>
+              {card.kicker && (
+                <span className="tr-kicker">
+                  {t?.status === 'cancelled' ? <X size={14} strokeWidth={3} /> : <Check size={14} strokeWidth={3.2} />}{card.kicker}
+                </span>
               )}
-            </>
-          ) : (
-            <div className="tr-info">
-              <b className="tr-info-h">Order info</b>
-              <div className="tr-route">
-                <div className="tr-route-line" aria-hidden="true"><span className="s" /><i /><span className="h" /></div>
-                <div className="tr-route-text">
-                  <div><b>{t?.store?.name}</b><span>{t?.store?.text}</span></div>
-                  <div><b>{t?.drop?.label || 'Home'}</b><span>{t?.drop?.text}</span></div>
-                </div>
-              </div>
-              {t?.instructions?.length > 0 && <div className="tr-chips">{t.instructions.map((x) => <span key={x}>{x}</span>)}</div>}
-              <div className="tr-items">
-                {t?.items?.map((it, i) => <div key={i}>{it.name} <small>{it.unit} × {it.quantity}</small></div>)}
-                <div className="tr-total"><span>#{t?.order_number}</span><b>{rs(t?.bill?.total)} · {cod ? 'Cash' : 'Paid online'}</b></div>
-              </div>
+              <h1>{card.title}</h1>
+              <p>{card.sub}</p>
+            </div>
+            {etaText && <div className="tr-eta"><b>{etaText}</b><span>mins</span></div>}
+          </div>
+          {stage >= 0 && (
+            <div className="tr-bars" aria-label={`Step ${Math.min(stage, 3) + 1} of 4`}>
+              {[0, 1, 2, 3].map((i) => <span key={i} className={i <= Math.min(stage, 3) ? 'on' : ''} />)}
             </div>
           )}
-          <button type="button" className="tr-toggle" onClick={() => setInfo((v) => !v)} aria-expanded={info}>
-            {info ? 'Hide order info' : 'Order info & instructions'}
-            <ChevronRight size={18} className={info ? 'open' : ''} />
-          </button>
         </section>
 
-        {p && live && (
-          <div className="tr-rider">
-            <span className="tr-av">{p.name.charAt(0)}</span>
-            <div>
-              <b>{p.name}</b>
-              <small>{VEHICLE[p.vehicle?.type] || 'Rider'}{p.vehicle?.number ? ` · ${p.vehicle.number}` : ''}{leftKm != null ? ` · ${fmtKm(leftKm)} away` : ''}</small>
-            </div>
-            {p.phone && <a href={`tel:+91${p.phone}`} aria-label={`Call ${p.name}`}><Phone size={18} /></a>}
+        {showDetails && (
+          <div className="tr-details">
+            {p && live && (
+              <div className="tr-rider">
+                <span className="tr-av">{p.name.charAt(0)}</span>
+                <div>
+                  <b>{p.name}</b>
+                  <small>{VEHICLE[p.vehicle?.type] || 'Rider'}{p.vehicle?.number ? ` · ${p.vehicle.number}` : ''}{leftKm != null ? ` · ${fmtKm(leftKm)} away` : ''}</small>
+                </div>
+                {p.phone && <a href={`tel:+91${p.phone}`} aria-label={`Call ${p.name}`}><Phone size={18} /></a>}
+              </div>
+            )}
+            {p && live && !rider && <p className="tr-note">{p.name.split(' ')[0]}'s live location will show on the map once they start riding.</p>}
+            {!p && live && stage >= 1 && (
+              <p className="tr-note">{toYou ? 'The store\u2019s own staff is delivering this order, so live location isn\u2019t available.' : 'Assigning a delivery partner near the store…'}</p>
+            )}
+
+            {t?.delivery_code && live && stage >= 1 && (
+              <div className="tr-code"><ShieldCheck size={20} /><span>Share this code at your door</span><b>{t.delivery_code.split('').join(' ')}</b></div>
+            )}
+            {cod && live && (
+              <div className="tr-cash"><Wallet size={20} /><span>Keep <b>{rs(t.bill.total)}</b> ready. Pay cash to the rider at your door.</span></div>
+            )}
+
+            {t && (
+              <div className="tr-info">
+                <b className="tr-info-h">Order info</b>
+                <div className="tr-route">
+                  <div className="tr-route-line" aria-hidden="true"><span className="s" /><i /><span className="h" /></div>
+                  <div className="tr-route-text">
+                    <div><b>{t.store?.name}</b><span>{t.store?.text}</span></div>
+                    <div><b>{t.drop?.label || 'Home'}</b><span>{t.drop?.text}</span></div>
+                  </div>
+                </div>
+                {t.instructions?.length > 0 && <div className="tr-chips">{t.instructions.map((x) => <span key={x}>{x}</span>)}</div>}
+                <div className="tr-items">
+                  {t.items?.map((it, i) => <div key={i}>{it.name} <small>{it.unit} × {it.quantity}</small></div>)}
+                  <div className="tr-total"><span>#{t.order_number}</span><b>{rs(t.bill?.total)} · {cod ? 'Cash' : 'Paid online'}</b></div>
+                </div>
+              </div>
+            )}
           </div>
         )}
-        {p && live && !rider && <p className="tr-note">{p.name.split(' ')[0]}'s live location will show on the map once they start riding.</p>}
-        {!p && live && stage >= 1 && (
-          <p className="tr-note">{toYou ? 'The store\u2019s own staff is delivering this order, so live location isn\u2019t available.' : 'Assigning a delivery partner near the store…'}</p>
-        )}
 
-        {t?.delivery_code && live && stage >= 1 && (
-          <div className="tr-code"><ShieldCheck size={20} /><span>Share this code at your door</span><b>{t.delivery_code.split('').join(' ')}</b></div>
+        {!wide && (
+          <button type="button" className="tr-toggle" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
+            {open ? 'Show less' : p && live ? 'Rider, code & order info' : 'Order info & instructions'}
+            <ChevronUp size={18} className={open ? 'open' : ''} />
+          </button>
         )}
-        {cod && live && (
-          <div className="tr-cash"><Wallet size={20} /><span>Keep <b>{rs(t.bill.total)}</b> ready. Pay cash to the rider at your door.</span></div>
-        )}
-      </div>
+      </aside>
     </div>
   )
 }

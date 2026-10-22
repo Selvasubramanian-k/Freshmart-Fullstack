@@ -54,6 +54,7 @@ export default function LiveMap({ rider, riderLabel, places = [], route, routeCo
   const mapRef = useRef(null)
   const layersRef = useRef({ places: null, route: null, routeHalo: null, rider: null })
   const riderPos = useRef(null)
+  const refitRef = useRef(null)
   const riderHeading = useRef(90)
   const animRef = useRef(0)
   const fittedRef = useRef(null)
@@ -61,6 +62,7 @@ export default function LiveMap({ rider, riderLabel, places = [], route, routeCo
   // create the map once
   useEffect(() => {
     const map = L.map(boxRef.current, { zoomControl: false, attributionControl: true })
+    L.control.zoom({ position: 'bottomright', zoomInTitle: 'Zoom in', zoomOutTitle: 'Zoom out' }).addTo(map)
     // Free OpenStreetMap tiles (no API key). For heavy production traffic set
     // VITE_MAP_TILE_URL to a tile provider you have an account with.
     L.tileLayer(import.meta.env.VITE_MAP_TILE_URL || 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -70,7 +72,19 @@ export default function LiveMap({ rider, riderLabel, places = [], route, routeCo
     map.setView([13.0827, 80.2707], 13) // Chennai until we know better
     layersRef.current.places = L.layerGroup().addTo(map)
     mapRef.current = map
+    // keep tiles/markers right when the box changes size (side panel, sheet, rotate)
+    let last = '', t
+    const ro = new ResizeObserver(([e]) => {
+      const size = `${Math.round(e.contentRect.width)}x${Math.round(e.contentRect.height)}`
+      if (size === last) return
+      const first = !last
+      last = size
+      map.invalidateSize({ pan: false })
+      if (!first) { clearTimeout(t); t = setTimeout(() => refitRef.current?.(), 120) } // box changed: show everything again
+    })
+    ro.observe(boxRef.current)
     return () => {
+      ro.disconnect(); clearTimeout(t)
       cancelAnimationFrame(animRef.current)
       map.remove()
       mapRef.current = null
@@ -143,8 +157,14 @@ export default function LiveMap({ rider, riderLabel, places = [], route, routeCo
     }
     animRef.current = requestAnimationFrame(step)
     // rider went off screen -> follow
-    if (!map.getBounds().pad(-0.15).contains([to.lat, to.lng])) map.panTo([to.lat, to.lng], { animate: true })
-  }, [rider, riderLabel])
+    // keep it out from under floating cards (fitPadding), not just inside the map box
+    const pad = fitPadding || { padding: [60, 60] }
+    map.panInside([to.lat, to.lng], {
+      paddingTopLeft: pad.paddingTopLeft || pad.padding || [60, 60],
+      paddingBottomRight: pad.paddingBottomRight || pad.padding || [60, 60],
+      animate: true,
+    })
+  }, [rider, riderLabel]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // fit everything in view when the set of things to show changes (fitKey)
   useEffect(() => {
@@ -168,6 +188,7 @@ export default function LiveMap({ rider, riderLabel, places = [], route, routeCo
     if (pts.length > 1) map.fitBounds(L.latLngBounds(pts), { ...(fitPadding || { padding: [60, 60] }), maxZoom: 16 })
     else if (pts.length) map.setView(pts[0], 16)
   }
+  refitRef.current = recenter
 
   return (
     <div className={`lm-wrap ${className}`}>

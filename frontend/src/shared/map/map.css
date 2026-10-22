@@ -31,3 +31,7 @@
 .lm-dots { animation: lm-dots-flow 1.2s linear infinite; }
 @keyframes lm-dots-flow { to { stroke-dashoffset: -24; } }
 @media (prefers-reduced-motion: reduce) { .lm-dots { animation: none; } }
+/* zoom + / - buttons (above the re-center button) */
+.lm-wrap .leaflet-control-zoom { border: 0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,.15); margin: 0 12px 64px 0; }
+.lm-wrap .leaflet-control-zoom a { width: 44px; height: 44px; line-height: 44px; font-size: 22px; color: #14201b; }
+.lm-wrap .leaflet-control-zoom a:first-child { border-bottom: 1px solid #eef0f2; }
