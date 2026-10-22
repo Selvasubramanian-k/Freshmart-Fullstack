@@ -79,5 +79,9 @@ class OrderStatusUpdate(BaseModel):
     note: str | None = Field(default=None, max_length=200)
 
 
+class RateRequest(BaseModel):
+    stars: int = Field(..., ge=1, le=5)
+
+
 class CancelRequest(BaseModel):
     reason: str | None = Field(default=None, max_length=200)

@@ -261,4 +261,23 @@ async def track_for_customer(customer: dict, order_id: str) -> dict:
         "rider_location": order.get("rider_location") if order["status"] in ("confirmed", "packed", "out_for_delivery") else None,
         "bill": order["bill"],
         "payment": {"method": order["payment"]["method"], "status": order["payment"]["status"]},
+        "items_count": sum(i["quantity"] for i in order["items"]),
+        "created_at": order["created_at"],
+        "delivered_at": order.get("delivered_at"),
+        "rating": order.get("rating"),
     })
+
+
+async def rate_delivery(customer: dict, order_id: str, stars: int) -> dict:
+    """Customer rates a delivered order (1-5 stars). Can be changed later."""
+    db = get_db()
+    order = await db.orders.find_one(
+        {"_id": to_object_id(order_id, "order id"), "customer_id": ObjectId(customer["id"])}
+    )
+    if not order:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Order not found")
+    if order["status"] != "delivered":
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "You can rate an order after it is delivered")
+    rating = {"stars": stars, "at": now_utc()}
+    await db.orders.update_one({"_id": order["_id"]}, {"$set": {"rating": rating}})
+    return serialize({"rating": rating})

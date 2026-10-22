@@ -194,3 +194,40 @@
   .tk-map { position: absolute; inset: 0; }
 }
 .tk-wait { margin: 0; font-size: 13px; color: #92400e; background: #fef3c7; border-radius: 12px; padding: 10px 12px; font-weight: 600; }
+
+/* ══════════════════ ORDER DELIVERED (design A) ══════════════════ */
+.dv-page {
+  position: fixed; inset: 0; z-index: 3000; overflow-y: auto; overflow-x: hidden;
+  background: #007a50; color: #fff; font-family: 'Montserrat', sans-serif;
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+  padding: max(56px, 8vh) 24px 28px; box-sizing: border-box;
+}
+.dv-page > * { width: 100%; max-width: 420px; position: relative; }
+.dv-confetti { position: absolute; inset: 0; max-width: none; pointer-events: none; overflow: hidden; }
+.dv-confetti span { position: absolute; top: -20px; width: 10px; height: 16px; border-radius: 3px; animation: dv-fall 3.2s linear infinite; }
+.dv-confetti .c0 { background: #f5a623; } .dv-confetti .c1 { background: #fff; width: 8px; height: 8px; border-radius: 50%; }
+.dv-confetti .c2 { background: #e85d4a; } .dv-confetti .c3 { background: #ffd166; width: 8px; height: 8px; border-radius: 50%; } .dv-confetti .c4 { background: #b7e4d2; }
+@keyframes dv-fall { 0% { transform: translateY(0) rotate(0); opacity: 0 } 10% { opacity: 1 } 100% { transform: translateY(105vh) rotate(320deg); opacity: 0 } }
+.dv-tick {
+  width: 128px !important; height: 128px; border-radius: 50%; background: #fff; color: #007a50;
+  display: grid; place-items: center; box-shadow: 0 0 0 16px rgba(255,255,255,.14); animation: dv-pop .6s ease-out both;
+}
+@keyframes dv-pop { 0% { transform: scale(.4); opacity: 0 } 70% { transform: scale(1.08); opacity: 1 } 100% { transform: scale(1) } }
+.dv-page h1 { margin: 34px 0 8px; font-size: 32px; font-weight: 800; }
+.dv-sub { margin: 0; font-size: 15px; line-height: 1.5; color: #d5f0e5; }
+.dv-stats { margin-top: 28px; display: flex; gap: 8px; }
+.dv-stats > div { flex: 1; background: rgba(255,255,255,.12); border-radius: 16px; padding: 14px 6px; }
+.dv-stats b { display: block; font-size: 20px; }
+.dv-stats span { font-size: 12px; color: #d5f0e5; }
+.dv-rate { margin-top: 22px; background: #fff; color: #14201b; border-radius: 20px; padding: 16px; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; text-align: left; }
+.dv-rate > span { font-size: 14px; font-weight: 700; }
+.dv-rate small { font-size: 12.5px; color: #007a50; font-weight: 700; }
+.dv-stars { display: flex; gap: 8px; }
+.dv-stars button { flex: 1; height: 48px; border: 0; border-radius: 12px; background: #f1f4f2; display: grid; place-items: center; cursor: pointer; }
+.dv-stars button:focus-visible, .dv-btn:focus-visible { outline: 3px solid #ffd166; outline-offset: 2px; }
+.dv-foot { margin-top: auto; padding-top: 28px; display: flex; flex-direction: column; gap: 10px; align-items: center; }
+.dv-bar { width: 100%; height: 6px; border-radius: 6px; background: rgba(255,255,255,.2); overflow: hidden; }
+.dv-bar span { display: block; height: 100%; background: #fff; transition: width 1s linear; }
+.dv-count { font-size: 13px; color: #d5f0e5; }
+.dv-btn { width: 100%; height: 54px; border: 0; border-radius: 14px; background: #fff; color: #007a50; font: 800 16px 'Montserrat', sans-serif; cursor: pointer; }
+@media (prefers-reduced-motion: reduce) { .dv-confetti { display: none; } .dv-tick { animation: none; } .dv-bar span { transition: none; } }

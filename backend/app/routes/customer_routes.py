@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, status
 from app.controllers import complaint_controller, delivery_controller, order_controller
 from app.middleware.auth import require_customer
 from app.models.complaint import ComplaintCreate
-from app.models.order import CancelRequest, OrderCreate
+from app.models.order import CancelRequest, OrderCreate, RateRequest
 
 router = APIRouter(prefix="/api/customer", tags=["Customer"], dependencies=[Depends(require_customer)])
 
@@ -28,6 +28,12 @@ async def get_order(order_id: str, user: dict = Depends(require_customer)):
 async def track_order(order_id: str, user: dict = Depends(require_customer)):
     """Live tracking: status, rider location, store + drop points, delivery code."""
     return await delivery_controller.track_for_customer(user, order_id)
+
+
+@router.post("/orders/{order_id}/rate")
+async def rate_order(order_id: str, data: RateRequest, user: dict = Depends(require_customer)):
+    """Star rating for the delivery (shown to the store)."""
+    return await delivery_controller.rate_delivery(user, order_id, data.stars)
 
 
 @router.post("/orders/{order_id}/cancel")

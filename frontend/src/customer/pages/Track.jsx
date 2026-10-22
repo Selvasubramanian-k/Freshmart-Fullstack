@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Phone, ShieldCheck, Store, Bike, PackageCheck, Home as HomeIcon } from 'lucide-react'
 import { api } from '../../shared/api/client.js'
 import LiveMap from '../../shared/map/LiveMap.jsx'
+import DeliveredScreen from '../components/DeliveredScreen.jsx'
 import { distanceKm, fetchRoute, fmtKm, fmtMin, hasPoint, resolvePlace } from '../../shared/map/geo.js'
 
 // ─────────────────────────────────────────────────────────────
@@ -14,6 +15,9 @@ const POLL_MS = 4000
 const WIDE = typeof window !== 'undefined' && window.matchMedia('(min-width: 900px)').matches
 const VEHICLE = { bike: 'Bike', scooter: 'Scooter', cycle: 'Cycle' }
 const rs = (n) => `₹${Number(n || 0).toFixed(0)}`
+// "Order delivered!" screen only for a fresh delivery (old delivered orders just show the map)
+const FRESH_MS = 15 * 60 * 1000
+const isFresh = (iso) => Boolean(iso) && Date.now() - new Date(/Z$|[+-]\d\d:\d\d$/.test(iso) ? iso : `${iso}Z`) < FRESH_MS
 
 function headline(t, etaMin) {
   if (!t) return { title: 'Loading your order…', sub: '' }
@@ -50,6 +54,9 @@ export default function Track() {
   const [drop, setDrop] = useState(null)
   const [route, setRoute] = useState(null)
   const routeFrom = useRef(null)
+  const navigate = useNavigate()
+  const [closed, setClosed] = useState(false)
+  const goHome = useCallback(() => { setClosed(true); navigate('/') }, [navigate])
 
   const load = useCallback(() => api.get(`/api/customer/orders/${orderId}/track`)
     .then((d) => { setT(d); setError('') })
@@ -109,6 +116,10 @@ export default function Track() {
         <Link className="tk-back-link" to="/account">Back to my orders</Link>
       </div>
     )
+  }
+
+  if (t?.status === 'delivered' && !closed && isFresh(t.delivered_at)) {
+    return <DeliveredScreen order={t} onDone={goHome} />
   }
 
   const idx = stepIndex(t?.status)

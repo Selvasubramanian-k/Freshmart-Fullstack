@@ -66,6 +66,7 @@ function OrderDetail({ order, onClose, onUpdated }) {
                 {rider.phone && <a className="ad-od-line" href={`tel:+91${rider.phone}`}><Phone size={14} /> +91 {rider.phone}</a>}
                 <p className="ad-od-line"><Bike size={14} /> {rider.vehicle?.number || rider.vehicle?.type || 'Rider'}
                   {' · '}{rider.picked_up_at ? 'Picked up' : rider.reached_store_at ? 'At your store' : 'Coming to your store'}</p>
+                {order.rating && <p className="ad-od-line"><span className="ad-stars" aria-label={`${order.rating.stars} out of 5 stars`}>{'★'.repeat(order.rating.stars)}{'☆'.repeat(5 - order.rating.stars)}</span> customer rating</p>}
                 {!rider.picked_up_at && order.status !== 'cancelled' && <p className="ad-od-note">Pack the order; the rider marks pickup and delivery from the rider app.</p>}
               </>
             ) : ['confirmed', 'packed'].includes(order.status) ? (
