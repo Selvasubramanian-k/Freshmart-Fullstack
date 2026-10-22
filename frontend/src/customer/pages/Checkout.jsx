@@ -15,7 +15,9 @@ export default function Checkout({ cart, user, onPlaceOrder, increment, decremen
       onBack={() => navigate('/')}
       onPlaceOrder={async (payload) => {
         const [result] = await Promise.all([onPlaceOrder(payload), wait(1200)])   // error vandha CheckoutPage catch pannum
-        navigate('/success', { replace: true, state: { result } })
+        // one store -> straight to the live map; split order (many stores) -> summary page
+        if (result.orders?.length === 1) navigate(`/track/${result.orders[0].id}`, { replace: true })
+        else navigate('/success', { replace: true, state: { result } })
       }}
     />
   )

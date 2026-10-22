@@ -48,7 +48,8 @@ const riderIcon = (label) => L.divIcon({
   iconAnchor: [32, 32],
 })
 
-export default function LiveMap({ rider, riderLabel, places = [], route, routeColor = '#00a870', fitKey, fitPadding, className = '' }) {
+// routeStyle: 'road' = solid road route, 'dotted' = curved dotted line (before the rider is on the way)
+export default function LiveMap({ rider, riderLabel, places = [], route, routeColor = '#00a870', routeStyle = 'road', fitKey, fitPadding, className = '' }) {
   const boxRef = useRef(null)
   const mapRef = useRef(null)
   const layersRef = useRef({ places: null, route: null, routeHalo: null, rider: null })
@@ -98,9 +99,14 @@ export default function LiveMap({ rider, riderLabel, places = [], route, routeCo
     const L_ = layersRef.current
     if (L_.route) { L_.route.remove(); L_.routeHalo.remove(); L_.route = L_.routeHalo = null }
     if (!map || !route || route.length < 2) return
+    if (routeStyle === 'dotted') {
+      L_.routeHalo = L.polyline(route, { color: routeColor, weight: 7, opacity: 0.1, lineCap: 'round', interactive: false }).addTo(map)
+      L_.route = L.polyline(route, { color: routeColor, weight: 4, opacity: 0.9, lineCap: 'round', dashArray: '1 11', className: 'lm-dots', interactive: false }).addTo(map)
+      return
+    }
     L_.routeHalo = L.polyline(route, { color: routeColor, weight: 12, opacity: 0.18, lineCap: 'round' }).addTo(map)
     L_.route = L.polyline(route, { color: routeColor, weight: 5, opacity: 0.95, lineCap: 'round', lineJoin: 'round' }).addTo(map)
-  }, [route, routeColor])
+  }, [route, routeColor, routeStyle])
 
   // rider marker: glide from old to new position and turn towards travel direction
   useEffect(() => {

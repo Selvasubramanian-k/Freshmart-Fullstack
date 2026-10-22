@@ -262,6 +262,8 @@ async def track_for_customer(customer: dict, order_id: str) -> dict:
         "bill": order["bill"],
         "payment": {"method": order["payment"]["method"], "status": order["payment"]["status"]},
         "items_count": sum(i["quantity"] for i in order["items"]),
+        "items": [{"name": i["name"], "quantity": i["quantity"], "unit": i.get("unit")} for i in order["items"]],
+        "instructions": order.get("instructions") or [],
         "created_at": order["created_at"],
         "delivered_at": order.get("delivered_at"),
         "rating": order.get("rating"),

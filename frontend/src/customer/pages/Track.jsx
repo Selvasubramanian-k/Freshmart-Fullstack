@@ -1,61 +1,56 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Phone, ShieldCheck, Store, Bike, PackageCheck, Home as HomeIcon } from 'lucide-react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { ArrowLeft, Check, ChevronRight, Phone, RefreshCw, ShieldCheck, Wallet, X } from 'lucide-react'
 import { api } from '../../shared/api/client.js'
 import LiveMap from '../../shared/map/LiveMap.jsx'
 import DeliveredScreen from '../components/DeliveredScreen.jsx'
-import { distanceKm, fetchRoute, fmtKm, fmtMin, hasPoint, resolvePlace } from '../../shared/map/geo.js'
+import { curvePoints, distanceKm, fetchRoute, fmtKm, hasPoint, resolvePlace } from '../../shared/map/geo.js'
 
 // ─────────────────────────────────────────────────────────────
-//  Live order tracking (design G): customer watches the rider's
-//  scooter drive to them. Polls /api/customer/orders/:id/track every 4s.
+//  Order tracking (design 1). Order pottavudane indha page varum:
+//  mela map (store -> home), adhu mela status card + ETA, "Order info".
+//  Polls /api/customer/orders/:id/track every 4s.
 // ─────────────────────────────────────────────────────────────
 const POLL_MS = 4000
-// desktop: the status card floats over the left of the map, keep pins out from under it
 const WIDE = typeof window !== 'undefined' && window.matchMedia('(min-width: 900px)').matches
 const VEHICLE = { bike: 'Bike', scooter: 'Scooter', cycle: 'Cycle' }
 const rs = (n) => `₹${Number(n || 0).toFixed(0)}`
+const toDate = (iso) => new Date(/Z$|[+-]\d\d:\d\d$/.test(iso) ? iso : `${iso}Z`)
+const hhmm = (iso) => (iso ? toDate(iso).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' }) : '')
 // "Order delivered!" screen only for a fresh delivery (old delivered orders just show the map)
 const FRESH_MS = 15 * 60 * 1000
-const isFresh = (iso) => Boolean(iso) && Date.now() - new Date(/Z$|[+-]\d\d:\d\d$/.test(iso) ? iso : `${iso}Z`) < FRESH_MS
+const isFresh = (iso) => Boolean(iso) && Date.now() - toDate(iso) < FRESH_MS
 
-function headline(t, etaMin) {
-  if (!t) return { title: 'Loading your order…', sub: '' }
-  const name = t.partner?.name?.split(' ')[0]
+// minutes the store still needs before the order can leave
+const PREP_MIN = { placed: 10, confirmed: 7, packed: 2 }
+const STAGE = { placed: 0, confirmed: 1, packed: 2, out_for_delivery: 3, delivered: 4 }
+
+function statusCard(t) {
+  const store = t.store?.name || 'the store'
+  const rider = t.partner?.name?.split(' ')[0]
   switch (t.status) {
-    case 'placed': return { title: 'Waiting for the store', sub: `${t.store?.name || 'The store'} will accept your order shortly` }
-    case 'confirmed':
-    case 'packed':
-      if (!t.partner) return { title: t.status === 'packed' ? 'Packed! Finding a rider' : 'Store is packing your order', sub: 'We are assigning a delivery partner near the store' }
-      return { title: `${name} is heading to the store`, sub: t.status === 'packed' ? 'Your order is packed and waiting' : 'The store is packing your order' }
-    case 'out_for_delivery':
-      if (!t.partner) return { title: 'On the way', sub: `${t.store?.name || 'The store'} staff is delivering your order` }
-      return { title: etaMin != null ? `Arriving in ${fmtMin(etaMin)}` : 'On the way to you',
-        sub: name ? `${name} picked up your order` : 'The store is delivering your order' }
-    case 'delivered': return { title: 'Delivered', sub: 'Enjoy your groceries!' }
-    case 'cancelled': return { title: 'Order cancelled', sub: 'This order will not be delivered' }
-    default: return { title: t.status.replaceAll('_', ' '), sub: '' }
+    case 'placed': return { kicker: 'ORDER PLACED', title: 'Order received!', sub: `Waiting for ${store} to accept your order` }
+    case 'confirmed': return { kicker: 'ACCEPTED', title: 'Packing your order', sub: rider ? `${store} is packing it. ${rider} will pick it up` : `${store} accepted it and is picking your items` }
+    case 'packed': return { kicker: 'PACKED', title: rider ? `${rider} is at the store` : 'Packed and ready', sub: rider ? 'Your order is packed and will be picked up now' : 'Finding the nearest delivery partner' }
+    case 'out_for_delivery': return { kicker: 'ON THE WAY', title: 'On the way', sub: rider ? `${rider} picked up your order and is riding to you` : 'The store\u2019s staff is bringing your order' }
+    case 'delivered': return { kicker: 'DELIVERED', title: 'Delivered', sub: `Delivered at ${hhmm(t.delivered_at)}. Enjoy your groceries!` }
+    case 'cancelled': return { kicker: 'CANCELLED', title: 'Order cancelled', sub: t.status_history?.at(-1)?.note || 'This order will not be delivered' }
+    default: return { kicker: t.status.replaceAll('_', ' ').toUpperCase(), title: 'Order update', sub: '' }
   }
 }
 
-const STEPS = [
-  { id: 'placed', label: 'Placed', Icon: PackageCheck },
-  { id: 'packed', label: 'Packed', Icon: Store },
-  { id: 'out_for_delivery', label: 'On the way', Icon: Bike },
-  { id: 'delivered', label: 'Delivered', Icon: HomeIcon },
-]
-const stepIndex = (s) => ({ placed: 0, confirmed: 0, packed: 1, out_for_delivery: 2, delivered: 3 }[s] ?? -1)
-
 export default function Track() {
   const { orderId } = useParams()
+  const navigate = useNavigate()
   const [t, setT] = useState(null)
   const [error, setError] = useState('')
   const [store, setStore] = useState(null)
   const [drop, setDrop] = useState(null)
   const [route, setRoute] = useState(null)
-  const routeFrom = useRef(null)
-  const navigate = useNavigate()
+  const [info, setInfo] = useState(false)
+  const [spin, setSpin] = useState(false)
   const [closed, setClosed] = useState(false)
+  const routeFrom = useRef(null)
   const goHome = useCallback(() => { setClosed(true); navigate('/') }, [navigate])
 
   const load = useCallback(() => api.get(`/api/customer/orders/${orderId}/track`)
@@ -83,37 +78,47 @@ export default function Track() {
   }, [t?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const rider = hasPoint(t?.rider_location) ? t.rider_location : null
-  const live = t && ['confirmed', 'packed', 'out_for_delivery'].includes(t.status)
+  const live = t && ['placed', 'confirmed', 'packed', 'out_for_delivery'].includes(t.status)
   const toYou = t?.status === 'out_for_delivery'
-  const target = toYou ? drop : store
+  const riderToStore = !toYou && Boolean(t?.partner) && Boolean(rider)
 
-  // road route: rider -> store (before pickup) or rider -> you (after pickup)
+  // route on the map: rider -> you (on the way), rider -> store (going to pick up), else store -> you
+  const from = toYou ? (rider || store) : riderToStore ? rider : store
+  const target = riderToStore ? store : drop
   useEffect(() => {
-    if (!live) return
-    const from = rider || (toYou ? store : null)
-    if (!hasPoint(from) || !hasPoint(target)) return
+    if (!live || !hasPoint(from) || !hasPoint(target)) return
     const prev = routeFrom.current
     if (prev && prev.target === target && distanceKm(prev.p, from) < 0.15) return
     routeFrom.current = { p: from, target }
     const ctl = new AbortController()
     fetchRoute(from, target, ctl.signal).then(setRoute).catch(() => {})
     return () => ctl.abort()
-  }, [rider?.lat, rider?.lng, target, live, toYou, store]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [from?.lat, from?.lng, target, live]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const leftKm = rider && hasPoint(drop) ? distanceKm(rider, drop) : null
-  const etaMin = toYou && route ? route.min * Math.min(1, (leftKm ?? route.km) / Math.max(route.km, 0.01)) : null
-  const head = headline(t, etaMin)
+  // ETA in minutes: store prep time + ride time (rough until the rider is on the way)
+  const leftKm = toYou && hasPoint(rider) && hasPoint(drop) ? distanceKm(rider, drop) : null
+  const rideMin = (a, b) => (hasPoint(a) && hasPoint(b) ? (distanceKm(a, b) * 1.3 / 18) * 60 + 1 : 12)
+  let eta = null
+  if (toYou) eta = route ? route.min * Math.min(1, (leftKm ?? route.km) / Math.max(route.km, 0.01)) : rideMin(rider || store, drop)
+  else if (live) eta = (PREP_MIN[t.status] ?? 5) + rideMin(store, drop)
+  const etaText = eta == null ? null : Math.max(1, Math.round(eta))
+
+  // until the rider is riding, show a curved dotted line store -> you (like an "order is coming" hint)
+  const dotted = live && !toYou && !riderToStore
+  const curve = useMemo(() => (dotted ? curvePoints(store, drop) : null), [dotted, store, drop])
 
   const places = useMemo(() => [
     ...(hasPoint(store) ? [{ id: 'store', kind: 'store', ...store, label: store.name }] : []),
-    ...(hasPoint(drop) ? [{ id: 'home', kind: 'home', ...drop, label: drop.approx ? 'You (approx)' : 'You' }] : []),
+    ...(hasPoint(drop) ? [{ id: 'home', kind: 'home', ...drop, label: drop.approx ? 'Home (approx)' : 'Home' }] : []),
   ], [store, drop])
+
+  const refresh = () => { setSpin(true); load().finally(() => setTimeout(() => setSpin(false), 500)) }
 
   if (error && !t) {
     return (
-      <div className="tk-page tk-msg">
+      <div className="tr-page tr-msg">
         <p>{error}</p>
-        <Link className="tk-back-link" to="/account">Back to my orders</Link>
+        <button type="button" className="tr-link" onClick={() => navigate('/account')}>Back to my orders</button>
       </div>
     )
   }
@@ -122,74 +127,102 @@ export default function Track() {
     return <DeliveredScreen order={t} onDone={goHome} />
   }
 
-  const idx = stepIndex(t?.status)
+  const card = t ? statusCard(t) : { kicker: '', title: 'Loading your order…', sub: '' }
+  const stage = STAGE[t?.status] ?? -1
   const p = t?.partner
+  const cod = t?.payment?.method === 'cod'
 
   return (
-    <div className="tk-page">
-      <div className="tk-map">
+    <div className="tr-page">
+      <div className="tr-map">
         <LiveMap
-          rider={live ? rider : null}
+          rider={live && p ? rider : null}
           riderLabel={p?.name?.split(' ')[0]}
           places={places}
-          route={live ? route?.coords : null}
-          routeColor={toYou ? '#00a870' : '#2563eb'}
-          fitPadding={WIDE ? { paddingTopLeft: [480, 70], paddingBottomRight: [70, 70] } : undefined}
-          fitKey={`${t?.status}-${places.length}-${Boolean(rider)}-${Boolean(route)}`}
+          route={dotted ? curve : live ? route?.coords : null}
+          routeStyle={dotted ? 'dotted' : 'road'}
+          routeColor={toYou ? '#00a870' : '#0b3d2e'}
+          fitPadding={WIDE ? { paddingTopLeft: [500, 90], paddingBottomRight: [70, 70] } : { paddingTopLeft: [40, 130], paddingBottomRight: [40, 130] }}
+          fitKey={`${t?.status}-${places.length}-${Boolean(rider)}-${Boolean(dotted ? curve : route)}`}
         />
-        <Link to="/account" className="tk-back" aria-label="Back to my orders"><ArrowLeft size={20} /></Link>
       </div>
 
-      <section className="tk-sheet" aria-live="polite">
-        <div className="tk-head">
-          <div>
-            <h1>{head.title}</h1>
-            <p>{head.sub}</p>
-          </div>
-          {toYou && leftKm != null && <span className="tk-dist">{fmtKm(leftKm)}<small>away</small></span>}
+      <div className="tr-top">
+        <button type="button" className="tr-round" onClick={() => navigate('/account')} aria-label="Back to my orders"><ArrowLeft size={20} /></button>
+        <div className="tr-title">
+          <b>{t?.store?.name || 'Your order'}</b>
+          {t && <span>{hhmm(t.created_at)} · {t.items_count} item{t.items_count === 1 ? '' : 's'}</span>}
         </div>
+        <button type="button" className={`tr-round ${spin ? 'spin' : ''}`} onClick={refresh} aria-label="Refresh status"><RefreshCw size={19} /></button>
+      </div>
 
-        {idx >= 0 && (
-          <ol className="tk-steps">
-            {STEPS.map(({ id, label, Icon }, i) => (
-              <li key={id} className={i < idx ? 'done' : i === idx ? 'now' : ''}>
-                <span><Icon size={16} /></span>{label}
-              </li>
-            ))}
-          </ol>
-        )}
+      <div className="tr-panel">
+        <section className={`tr-card ${t?.status === 'cancelled' ? 'bad' : ''}`} aria-live="polite">
+          {!info ? (
+            <>
+              <div className="tr-head">
+                <div>
+                  {card.kicker && (
+                    <span className="tr-kicker">
+                      {t?.status === 'cancelled' ? <X size={14} strokeWidth={3} /> : <Check size={14} strokeWidth={3.2} />}{card.kicker}
+                    </span>
+                  )}
+                  <h1>{card.title}</h1>
+                  <p>{card.sub}</p>
+                </div>
+                {etaText && <div className="tr-eta"><b>{etaText}</b><span>mins</span></div>}
+              </div>
+              {stage >= 0 && (
+                <div className="tr-bars" aria-label={`Step ${Math.min(stage, 3) + 1} of 4`}>
+                  {[0, 1, 2, 3].map((i) => <span key={i} className={i <= Math.min(stage, 3) ? 'on' : ''} />)}
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="tr-info">
+              <b className="tr-info-h">Order info</b>
+              <div className="tr-route">
+                <div className="tr-route-line" aria-hidden="true"><span className="s" /><i /><span className="h" /></div>
+                <div className="tr-route-text">
+                  <div><b>{t?.store?.name}</b><span>{t?.store?.text}</span></div>
+                  <div><b>{t?.drop?.label || 'Home'}</b><span>{t?.drop?.text}</span></div>
+                </div>
+              </div>
+              {t?.instructions?.length > 0 && <div className="tr-chips">{t.instructions.map((x) => <span key={x}>{x}</span>)}</div>}
+              <div className="tr-items">
+                {t?.items?.map((it, i) => <div key={i}>{it.name} <small>{it.unit} × {it.quantity}</small></div>)}
+                <div className="tr-total"><span>#{t?.order_number}</span><b>{rs(t?.bill?.total)} · {cod ? 'Cash' : 'Paid online'}</b></div>
+              </div>
+            </div>
+          )}
+          <button type="button" className="tr-toggle" onClick={() => setInfo((v) => !v)} aria-expanded={info}>
+            {info ? 'Hide order info' : 'Order info & instructions'}
+            <ChevronRight size={18} className={info ? 'open' : ''} />
+          </button>
+        </section>
 
-        {p && t.status !== 'delivered' && t.status !== 'cancelled' && (
-          <div className="tk-partner">
-            <span className="tk-avatar">{p.name.charAt(0)}</span>
+        {p && live && (
+          <div className="tr-rider">
+            <span className="tr-av">{p.name.charAt(0)}</span>
             <div>
               <b>{p.name}</b>
-              <small>{VEHICLE[p.vehicle?.type] || 'Rider'}{p.vehicle?.number ? ` · ${p.vehicle.number}` : ''}</small>
+              <small>{VEHICLE[p.vehicle?.type] || 'Rider'}{p.vehicle?.number ? ` · ${p.vehicle.number}` : ''}{leftKm != null ? ` · ${fmtKm(leftKm)} away` : ''}</small>
             </div>
-            {p.phone && <a className="tk-call" href={`tel:+91${p.phone}`} aria-label={`Call ${p.name}`}><Phone size={18} /></a>}
+            {p.phone && <a href={`tel:+91${p.phone}`} aria-label={`Call ${p.name}`}><Phone size={18} /></a>}
           </div>
         )}
-
-        {p && live && !rider && (
-          <p className="tk-wait">{p.name.split(' ')[0]}'s live location will show here once they start riding.</p>
+        {p && live && !rider && <p className="tr-note">{p.name.split(' ')[0]}'s live location will show on the map once they start riding.</p>}
+        {!p && live && stage >= 1 && (
+          <p className="tr-note">{toYou ? 'The store\u2019s own staff is delivering this order, so live location isn\u2019t available.' : 'Assigning a delivery partner near the store…'}</p>
         )}
 
-        {toYou && !p && <p className="tk-wait">The store's own staff is bringing this order, so live location isn't available.</p>}
-
-        {t?.delivery_code && live && (
-          <div className="tk-code">
-            <ShieldCheck size={22} />
-            <div><small>Share this code with the rider at your door</small><b>{t.delivery_code.split('').join(' ')}</b></div>
-          </div>
+        {t?.delivery_code && live && stage >= 1 && (
+          <div className="tr-code"><ShieldCheck size={20} /><span>Share this code at your door</span><b>{t.delivery_code.split('').join(' ')}</b></div>
         )}
-
-        {t && (
-          <div className="tk-bill">
-            <span>#{t.order_number} · {t.payment.method === 'cod' ? `Pay ${rs(t.bill.total)} cash on delivery` : `Paid ${rs(t.bill.total)} online`}</span>
-            <Link to="/account">Order details</Link>
-          </div>
+        {cod && live && (
+          <div className="tr-cash"><Wallet size={20} /><span>Keep <b>{rs(t.bill.total)}</b> ready. Pay cash to the rider at your door.</span></div>
         )}
-      </section>
+      </div>
     </div>
   )
 }

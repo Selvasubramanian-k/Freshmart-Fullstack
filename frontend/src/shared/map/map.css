@@ -27,3 +27,7 @@
   .lm-pin-in.home, .lm-rider-pulse { animation: none; }
   .lm-rider-rot { transition: none; }
 }
+/* dotted "store -> you" line: dots slowly flow towards home */
+.lm-dots { animation: lm-dots-flow 1.2s linear infinite; }
+@keyframes lm-dots-flow { to { stroke-dashoffset: -24; } }
+@media (prefers-reduced-motion: reduce) { .lm-dots { animation: none; } }

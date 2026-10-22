@@ -116,6 +116,24 @@ export async function fetchRoute(from, to, signal) {
   }
 }
 
+// Curved line between two points (for the dotted "store -> you" line)
+export function curvePoints(a, b, bend = 0.22, n = 48) {
+  if (!hasPoint(a) || !hasPoint(b)) return null
+  const k = Math.cos(toRad((a.lat + b.lat) / 2))           // make lng/lat the same scale
+  const ax = a.lng * k, bx = b.lng * k
+  const mx = (ax + bx) / 2, my = (a.lat + b.lat) / 2
+  const dx = bx - ax, dy = b.lat - a.lat
+  const cx = mx - dy * bend, cy = my + dx * bend             // control point, pushed to one side
+  const pts = []
+  for (let i = 0; i <= n; i++) {
+    const t = i / n, u = 1 - t
+    const x = u * u * ax + 2 * u * t * cx + t * t * bx
+    const y = u * u * a.lat + 2 * u * t * cy + t * t * b.lat
+    pts.push([y, x / k])
+  }
+  return pts
+}
+
 // Open turn-by-turn navigation in the Google Maps app / site (free, no key)
 export function googleMapsLink(point, text) {
   const dest = hasPoint(point) ? `${point.lat},${point.lng}` : encodeURIComponent(text || '')
