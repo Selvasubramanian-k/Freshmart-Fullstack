@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Check, ChevronUp, Phone, RefreshCw, ShieldCheck, Wallet, X } from 'lucide-react'
 import { api } from '../../shared/api/client.js'
@@ -64,6 +64,15 @@ export default function Track() {
   const [spin, setSpin] = useState(false)
   const [closed, setClosed] = useState(false)
   const [sheetH, setSheetH] = useState(240)
+  // page fills exactly the space under the real header (phone header with search bar is taller)
+  const pageRef = useRef(null)
+  const [topPx, setTopPx] = useState(null)
+  useLayoutEffect(() => {
+    const measure = () => { if (pageRef.current) setTopPx(Math.round(pageRef.current.getBoundingClientRect().top + window.scrollY)) }
+    measure()
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+  })
   const routeFrom = useRef(null)
   const sheetRef = useRef(null)
   const goHome = useCallback(() => { setClosed(true); navigate('/') }, [navigate])
@@ -167,7 +176,7 @@ export default function Track() {
   const refreshBtn = <button type="button" className={`tr-round ${spin ? 'spin' : ''}`} onClick={refresh} aria-label="Refresh status"><RefreshCw size={19} /></button>
 
   return (
-    <div className={`tr-page ${wide ? 'wide' : 'phone'}${!wide && open ? ' sheet-open' : ''}`} style={{ '--sheet-h': `${sheetH}px` }}>
+    <div className={`tr-page ${wide ? 'wide' : 'phone'}${!wide && open ? ' sheet-open' : ''}`} ref={pageRef} style={{ '--sheet-h': `${sheetH}px`, ...(topPx != null && { height: `calc(100dvh - ${topPx}px)` }) }}>
       {/* ── map ── */}
       <div className="tr-map">
         <LiveMap
@@ -212,6 +221,11 @@ export default function Track() {
           )}
         </section>
 
+        {/* OTP always on top - no need to open the sheet or scroll */}
+        {t?.delivery_code && live && stage >= 1 && (
+          <div className="tr-code"><ShieldCheck size={20} /><span>Share this code at your door</span><b>{t.delivery_code.split('').join(' ')}</b></div>
+        )}
+
         {showDetails && (
           <div className="tr-details">
             {p && live && (
@@ -229,9 +243,6 @@ export default function Track() {
               <p className="tr-note">{toYou ? 'The store\u2019s own staff is delivering this order, so live location isn\u2019t available.' : 'Assigning a delivery partner near the store…'}</p>
             )}
 
-            {t?.delivery_code && live && stage >= 1 && (
-              <div className="tr-code"><ShieldCheck size={20} /><span>Share this code at your door</span><b>{t.delivery_code.split('').join(' ')}</b></div>
-            )}
             {cod && live && (
               <div className="tr-cash"><Wallet size={20} /><span>Keep <b>{rs(t.bill.total)}</b> ready. Pay cash to the rider at your door.</span></div>
             )}
@@ -258,7 +269,7 @@ export default function Track() {
 
         {!wide && (
           <button type="button" className="tr-toggle" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
-            {open ? 'Show less' : p && live ? 'Rider, code & order info' : 'Order info & instructions'}
+            {open ? 'Show less' : p && live ? 'Rider & order info' : 'Order info & instructions'}
             <ChevronUp size={18} className={open ? 'open' : ''} />
           </button>
         )}
