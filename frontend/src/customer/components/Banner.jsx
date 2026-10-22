@@ -1,6 +1,6 @@
-import Egg from '../../assets/dairy.jpg'
-import cool from '../../assets/soft-drinks.jpg'
-import fruits from '../../assets/fruits.jpg'
+import Egg from '../../assets/dairy.webp'
+import cool from '../../assets/soft-drinks.webp'
+import fruits from '../../assets/fruits.webp'
 import { useState, useEffect } from 'react'
 
 // cat -> button click panna Home la entha category open aagum (categories.js la irukkura id)
