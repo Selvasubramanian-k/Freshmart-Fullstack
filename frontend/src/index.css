@@ -1543,6 +1543,8 @@ body {
 }
 .acc-back { display: none; background: none; border: 0; font-size: 28px; line-height: 1; cursor: pointer; padding: 0 6px; }
 .acc-right-body { padding: 16px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; max-height: 640px; }
+/* cards keep their full height; the list scrolls instead of squashing them */
+.acc-right-body > * { flex-shrink: 0; }
 
 .acc-order { background: #fff; border-radius: 18px; overflow: hidden; }
 .acc-order-top { display: flex; justify-content: space-between; gap: 12px; padding: 16px 18px 8px; }
