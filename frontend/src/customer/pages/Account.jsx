@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ProductImage from '../components/ProductImage.jsx'
+import OrderTimeline from '../components/OrderTimeline.jsx'
 import Icon from '../components/Icon.jsx'
 import Avatar, { AvatarPicker } from '../components/Avatar.jsx'
 import { readAddrs, saveAddrs } from '../utils/addresses.js'
@@ -16,14 +17,6 @@ const TABS = [
   { id: 'profile',   label: 'Profile',          icon: 'user' },
 ]
 
-// Order tracking steps (customer side)
-const TRACK_STEPS = [
-  { id: 'placed',           label: 'Placed' },
-  { id: 'confirmed',        label: 'Confirmed' },
-  { id: 'packed',           label: 'Packed' },
-  { id: 'out_for_delivery', label: 'On the way' },
-  { id: 'delivered',        label: 'Delivered' },
-]
 const STATUS_TEXT = {
   placed: 'Order placed', confirmed: 'Confirmed by store', packed: 'Packed and ready',
   out_for_delivery: 'Out for delivery', delivered: 'Order delivered', cancelled: 'Order cancelled',
@@ -51,28 +44,13 @@ const fmtDate = (iso) => {
 }
 const rs = (n) => `₹${Number(n).toFixed(2)}`
 
-function OrderTracker({ status }) {
-  const idx = TRACK_STEPS.findIndex(s => s.id === status)
-  if (idx < 0) return null
-  return (
-    <ol className="acc-track">
-      {TRACK_STEPS.map((s, i) => (
-        <li key={s.id} className={i < idx ? 'done' : i === idx ? 'now' : ''}>
-          <span className="acc-track-dot">{i <= idx ? <Icon name="check" /> : null}</span>
-          <span className="acc-track-lbl">{s.label}</span>
-        </li>
-      ))}
-    </ol>
-  )
-}
-
 function OrderCard({ order, onOrderAgain, onChanged }) {
   const o = order.raw
-  const [open, setOpen]       = useState(false)
+  const live = ['placed', 'confirmed', 'packed', 'out_for_delivery'].includes(o.status)
+  const [open, setOpen]       = useState(live)   // live orders open with the timeline showing
   const [issue, setIssue]     = useState(null)   // { type, text }
   const [busy, setBusy]       = useState(false)
   const [msg, setMsg]         = useState('')
-  const navigate = useNavigate()
 
   const canCancel = ['placed', 'confirmed'].includes(o.status)
   const canIssue  = !['cancelled', 'returned', 'return_requested'].includes(o.status)
@@ -95,7 +73,6 @@ function OrderCard({ order, onOrderAgain, onChanged }) {
     } catch (e) { setMsg(e.message) } finally { setBusy(false) }
   }
 
-  const live = ['placed', 'confirmed', 'packed', 'out_for_delivery'].includes(o.status)
   const tone = o.status === 'cancelled' ? 'bad' : ['delivered', 'returned'].includes(o.status) ? 'good' : 'live'
 
   return (
@@ -120,24 +97,14 @@ function OrderCard({ order, onOrderAgain, onChanged }) {
         ))}
       </div>
 
-      {live && (
-        <div className="acc-live">
-          <div>
-            <b>{o.partner ? `${o.partner.name} ${o.status === 'out_for_delivery' ? 'is on the way' : 'will deliver this'}` : 'Track your order on the map'}</b>
-            {o.delivery_code && <span>Delivery code <strong>{o.delivery_code}</strong> · share only at your door</span>}
-          </div>
-          <button className="acc-primary" onClick={() => navigate(`/track/${o.id}`)}>Track live</button>
-        </div>
-      )}
 
       {open && (
         <div className="acc-order-detail">
-          <OrderTracker status={o.status} />
-          <div className="acc-history">
-            {o.status_history.slice().reverse().map((h, i) => (
-              <p key={i}><b>{STATUS_TEXT[h.status] || h.status}</b> · {fmtDate(h.at)}{h.note ? ` · ${h.note}` : ''}</p>
-            ))}
-          </div>
+          <OrderTimeline
+            order={o}
+            onRefresh={onChanged}
+            onIssue={canIssue && !issue ? () => { setMsg(''); setIssue({ type: types[0].id, text: '' }) } : null}
+          />
           <div className="acc-lines">
             {o.items.map(it => (
               <div className="acc-row" key={it.pid}><span>{it.name} <span className="acc-muted">{it.unit} × {it.quantity}</span></span><b>{rs(it.line_total)}</b></div>

@@ -231,3 +231,51 @@
 .dv-count { font-size: 13px; color: #d5f0e5; }
 .dv-btn { width: 100%; height: 54px; border: 0; border-radius: 14px; background: #fff; color: #007a50; font: 800 16px 'Montserrat', sans-serif; cursor: pointer; }
 @media (prefers-reduced-motion: reduce) { .dv-confetti { display: none; } .dv-tick { animation: none; } .dv-bar span { transition: none; } }
+
+/* ══════════════════ ORDER TIMELINE (My Orders) ══════════════════ */
+.ot { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.ot-list { list-style: none; margin: 0; padding: 0; position: relative; display: flex; flex-direction: column; gap: 12px; }
+/* line from each dot down to the next dot; green once that step is done */
+.ot-step:not(:last-child)::after { content: ''; position: absolute; left: 10px; top: 39px; bottom: -29px; width: 3px; background: #dfe5e2; }
+.ot-step.done::after { background: #00a870 !important; }
+.ot-step { position: relative; display: flex; gap: 14px; align-items: flex-start; }
+.ot-dot {
+  position: relative; z-index: 1; flex: 0 0 22px; width: 22px; height: 22px; margin-top: 17px; border-radius: 50%;
+  box-sizing: border-box; display: grid; place-items: center; background: #fff; border: 3px solid #dfe5e2; color: #fff;
+}
+.ot-step.done .ot-dot { background: #00a870; border: 0; }
+.ot-step.now .ot-dot { background: #00a870; border: 4px solid #d6efe3; animation: ot-glow 1.6s ease-out infinite; }
+.ot-step.bad .ot-dot { background: #dc2626; border-color: #fde2e2; animation: none; }
+.ot-step.warn .ot-dot { background: #d97706; border-color: #fef3c7; animation: none; }
+@keyframes ot-glow { 0% { box-shadow: 0 0 0 0 rgba(0,168,112,.55) } 100% { box-shadow: 0 0 0 12px rgba(0,168,112,0) } }
+.ot-card { flex: 1; min-width: 0; box-sizing: border-box; border-radius: 14px; }
+.ot-card.small { background: #fff; border: 1px solid #e3ebe7; padding: 11px 14px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.ot-card.small b { display: block; font-size: 14px; color: #0b3d2e; }
+.ot-card.small span { font-size: 12px; color: #4b5563; }
+.ot-card.small time { font-size: 12px; font-weight: 700; color: #007a50; white-space: nowrap; }
+.ot-card.faint { min-height: 56px; border: 1px solid #e5e7eb; background: #fbfcfb; padding: 0 14px; display: flex; justify-content: space-between; align-items: center; color: #6b7280; font-size: 15px; }
+.ot-card.faint svg { opacity: .35; }
+.ot-card.big { background: #fff; border-radius: 18px; box-shadow: 0 10px 26px rgba(0,60,40,.10); padding: 16px; display: flex; flex-direction: column; gap: 10px; animation: ot-in .35s ease-out; }
+@keyframes ot-in { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: none } }
+.ot-head { display: flex; gap: 12px; align-items: flex-start; }
+.ot-head > div { flex: 1; min-width: 0; }
+.ot-head b { display: block; font-size: 18px; color: #0b3d2e; }
+.ot-head span { font-size: 13px; font-weight: 700; color: #007a50; }
+.ot-ic { width: 56px; height: 56px; flex-shrink: 0; border-radius: 16px; background: #e6f7f1; color: #007a50; display: grid; place-items: center; }
+.ot-step.bad .ot-head b, .ot-step.bad .ot-head span { color: #b91c1c; } .ot-step.bad .ot-ic { background: #fee2e2; color: #b91c1c; }
+.ot-step.warn .ot-head span { color: #92400e; } .ot-step.warn .ot-ic { background: #fef3c7; color: #b45309; }
+.ot-card.big p { margin: 0; font-size: 14px; line-height: 1.5; color: #374151; }
+.ot-rider { display: flex; align-items: center; gap: 10px; background: #f4f6f5; border-radius: 14px; padding: 10px; }
+.ot-rider > div { flex: 1; min-width: 0; }
+.ot-rider b { display: block; font-size: 14px; }
+.ot-rider small { font-size: 12px; color: #4b5563; }
+.ot-rider a { width: 44px; height: 44px; border-radius: 50%; background: #e6f7f1; color: #007a50; display: grid; place-items: center; }
+.ot-av { width: 40px; height: 40px; flex-shrink: 0; border-radius: 50%; background: #0b3d2e; color: #fff; font-weight: 800; display: grid; place-items: center; }
+.ot-code { display: flex; justify-content: space-between; align-items: center; background: #0b3d2e; color: #fff; border-radius: 14px; padding: 10px 14px; }
+.ot-code span { font-size: 12.5px; color: #cfe5dc; }
+.ot-code b { font-size: 20px; letter-spacing: .15em; }
+.ot-btn { height: 48px; border: 0; border-radius: 12px; background: #007a50; color: #fff; font: 800 15px 'Montserrat', sans-serif; cursor: pointer; }
+.ot-btn:hover { background: #006b45; }
+.ot-btn.ghost { background: #fff; color: #007a50; border: 1.5px solid #cfe5dc; }
+.ot-refresh { align-self: center; min-height: 44px; border: 0; background: none; color: #007a50; font: 800 14px 'Montserrat', sans-serif; text-decoration: underline; cursor: pointer; }
+@media (prefers-reduced-motion: reduce) { .ot-step.now .ot-dot, .ot-card.big { animation: none; } }
