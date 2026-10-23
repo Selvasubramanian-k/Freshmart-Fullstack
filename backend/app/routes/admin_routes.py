@@ -6,10 +6,11 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 
 from app.controllers import (
-    complaint_controller, dashboard_controller, delivery_controller, order_controller, product_controller,
+    category_controller, complaint_controller, dashboard_controller, delivery_controller, order_controller, product_controller,
     staff_controller, store_controller,
 )
 from app.middleware.auth import require_admin
+from app.models.category import CategoryCreate
 from app.models.complaint import ComplaintRespond
 from app.models.delivery import AssignRequest
 from app.models.order import OrderStatusUpdate
@@ -47,6 +48,21 @@ async def availability(data: StoreAvailability, user: dict = Depends(require_adm
 
 
 # ---------- Products ----------
+@router.get("/categories")
+async def list_categories(user: dict = Depends(require_admin)):
+    return await category_controller.admin_list(user)
+
+
+@router.post("/categories", status_code=status.HTTP_201_CREATED)
+async def create_category(data: CategoryCreate, user: dict = Depends(require_admin)):
+    return await category_controller.create_category(user, data)
+
+
+@router.delete("/categories/{cid}")
+async def delete_category(cid: str, user: dict = Depends(require_admin)):
+    return await category_controller.delete_category(user, cid)
+
+
 @router.get("/products")
 async def list_products(q: str | None = None, category: str | None = None, low_stock: bool = False,
                         user: dict = Depends(require_admin)):

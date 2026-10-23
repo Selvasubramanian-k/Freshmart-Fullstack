@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Plus, Search, Pencil, Trash2, Package, Upload } from 'lucide-react'
+import { Plus, Search, Pencil, Trash2, Package, Upload, Lock } from 'lucide-react'
 import { api } from '../../shared/api/client.js'
 import { resolveImage } from '../../shared/utils/images.js'
 import { CATEGORIES } from '../../customer/data/categories.js'
 import { Empty, ErrorNote, Modal, PageHead } from '../components/ui.jsx'
 import { rs } from '../utils/format.js'
 
-const CATS = CATEGORIES.filter(c => c.id !== 'all')
-const CAT_LABEL = Object.fromEntries(CATS.map(c => [c.id, c.label]))
+// Backend load aagura varaikkum static list (same ids)
+const FALLBACK_CATS = CATEGORIES.filter(c => c.id !== 'all').map(c => ({ ...c, products: null }))
 const TAGS = ['popular', 'new', 'sale', 'organic']
 const LOW = 10
 
@@ -20,13 +20,63 @@ const daysLeft = (date) => {
 
 const EMPTY = { name: '', category: 'fruits', unit: '1 kg', price: '', mrp: '', stock: '', tag: 'popular', image_url: '', expiry_date: '', description: '', is_active: true }
 
-function ProductForm({ initial, onSaved, onClose }) {
+function CategoryManager({ cats, setCats, onAdded }) {
+  const [draft, setDraft] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+
+  const add = async () => {
+    const label = draft.trim()
+    if (label.length < 2) return setErr('Type a category name (2+ letters).')
+    setBusy(true); setErr('')
+    try {
+      const c = await api.post('/api/admin/categories', { label })
+      setCats(xs => [...xs, c]); setDraft(''); onAdded(c.id)
+    } catch (e) { setErr(e.message) }
+    finally { setBusy(false) }
+  }
+  const del = async (c) => {
+    if (c.products) return
+    if (!window.confirm(`Delete category "${c.label}"?`)) return
+    setErr('')
+    try { await api.del(`/api/admin/categories/${c.id}`); setCats(xs => xs.filter(x => x.id !== c.id)) }
+    catch (e) { setErr(e.message) }
+  }
+
+  return (
+    <section className="ad-catman full" aria-label="Manage categories">
+      <div className="ad-catman-head"><b>Categories</b><span className="ad-muted ad-small">{cats.length} categories</span></div>
+      <div className="ad-catman-add">
+        <input className="ad-input" aria-label="New category name" placeholder="New category, e.g. Pooja Items" maxLength={30}
+          value={draft} onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add() } }} />
+        <button type="button" className="ad-btn" disabled={busy} onClick={add}><Plus size={16} /> {busy ? 'Adding…' : 'Add'}</button>
+      </div>
+      <ul className="ad-catman-list">
+        {cats.map(c => (
+          <li key={c.id}>
+            <span className="ad-catman-name">{c.label}</span>
+            <span className="ad-muted ad-small">{c.products == null ? '' : c.products ? `${c.products} product${c.products > 1 ? 's' : ''}` : 'empty'}</span>
+            <button type="button" className={`ad-catman-del ${c.products ? 'locked' : ''}`} disabled={Boolean(c.products)}
+              aria-label={`Delete ${c.label}`} title={c.products ? `Move its ${c.products} products first` : 'Delete'}
+              onClick={() => del(c)}><Trash2 size={16} /></button>
+          </li>
+        ))}
+      </ul>
+      {err && <ErrorNote>{err}</ErrorNote>}
+      <span className="ad-muted ad-small">A category with products can’t be deleted. Move its products first.</span>
+    </section>
+  )
+}
+
+function ProductForm({ initial, onSaved, onClose, cats, setCats }) {
   const editing = Boolean(initial?.pid)
+  const [manage, setManage] = useState(false)
   const [f, setF] = useState(() => editing ? {
     ...EMPTY, ...initial,
     price: String(initial.price), mrp: initial.mrp ? String(initial.mrp) : '', stock: String(initial.stock),
     image_url: initial.image_url || '', expiry_date: initial.expiry_date || '', description: initial.description || '',
-  } : EMPTY)
+  } : { ...EMPTY, category: cats.some(c => c.id === EMPTY.category) ? EMPTY.category : (cats[0]?.id || '') })
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -85,16 +135,26 @@ function ProductForm({ initial, onSaved, onClose }) {
         </div>
 
         <label className="ad-field full">Product name<input className="ad-input" value={f.name} onChange={set('name')} placeholder="e.g. Fresh Tomato" autoFocus /></label>
-        <label className="ad-field">Category
-          <select className="ad-input" value={f.category} onChange={set('category')}>
-            {CATS.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+        <div className="ad-field">
+          <div className="ad-field-row">
+            <label htmlFor="pf-cat">Category</label>
+            <button type="button" className="ad-linkbtn" aria-expanded={manage} onClick={() => setManage(m => !m)}>{manage ? 'Done' : 'Manage'}</button>
+          </div>
+          <select id="pf-cat" className="ad-input" value={f.category} onChange={set('category')}>
+            {!cats.some(c => c.id === f.category) && <option value={f.category}>{f.category}</option>}
+            {cats.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
           </select>
-        </label>
+        </div>
         <label className="ad-field">Unit<input className="ad-input" value={f.unit} onChange={set('unit')} placeholder="1 kg, 500 g, 1 L" /></label>
+        {manage && <CategoryManager cats={cats} setCats={setCats} onAdded={(id) => setF(x => ({ ...x, category: id }))} />}
         <label className="ad-field">Selling price (₹)<input className="ad-input" inputMode="decimal" value={f.price} onChange={set('price')} /></label>
         <label className="ad-field">MRP (₹, optional)<input className="ad-input" inputMode="decimal" value={f.mrp} onChange={set('mrp')} placeholder="shown struck through" /></label>
         <label className="ad-field">Stock<input className="ad-input" inputMode="numeric" value={f.stock} onChange={set('stock')} /></label>
-        <label className="ad-field">Expiry date<input className="ad-input" type="date" value={f.expiry_date} onChange={set('expiry_date')} /></label>
+        <div className="ad-field">
+          <label htmlFor="pf-exp" className="ad-field-row start">Expiry date <span className="ad-admin-only"><Lock size={11} strokeWidth={2.6} /> only for admin</span></label>
+          <input id="pf-exp" className="ad-input" type="date" value={f.expiry_date} onChange={set('expiry_date')} aria-describedby="pf-exp-hint" />
+          <span id="pf-exp-hint" className="ad-muted ad-small">Customers don’t see this. Used for your near-expiry alerts.</span>
+        </div>
         <label className="ad-field">Tag
           <select className="ad-input" value={f.tag} onChange={set('tag')}>
             {TAGS.map(t => <option key={t} value={t}>{t}</option>)}
@@ -143,9 +203,12 @@ export default function Products() {
   const [cat, setCat]       = useState('')
   const lowOnly             = params.get('low') === '1'
   const [editing, setEditing] = useState(null)   // null | {} (new) | product
+  const [cats, setCats]     = useState(FALLBACK_CATS)
 
   const load = useCallback(() => api.get('/api/admin/products').then(setItems).catch(e => setError(e.message)), [])
-  useEffect(() => { load() }, [load])
+  const loadCats = useCallback(() => api.get('/api/admin/categories').then(setCats).catch(() => {}), [])
+  useEffect(() => { load(); loadCats() }, [load, loadCats])
+  const catLabel = useMemo(() => Object.fromEntries(cats.map(c => [c.id, c.label])), [cats])
 
   const list = useMemo(() => (items || []).filter(p =>
     (!q || p.name.toLowerCase().includes(q.toLowerCase())) &&
@@ -156,10 +219,11 @@ export default function Products() {
   const onSaved = (saved, wasEdit) => {
     setItems(xs => wasEdit ? xs.map(x => x.pid === saved.pid ? saved : x) : [saved, ...xs])
     setEditing(null)
+    loadCats()   // product counts update
   }
   const remove = async (p) => {
     if (!window.confirm(`Delete "${p.name}"? This cannot be undone.`)) return
-    try { await api.del(`/api/admin/products/${p.pid}`); setItems(xs => xs.filter(x => x.pid !== p.pid)) }
+    try { await api.del(`/api/admin/products/${p.pid}`); setItems(xs => xs.filter(x => x.pid !== p.pid)); loadCats() }
     catch (e) { setError(e.message) }
   }
   const toggleActive = async (p) => {
@@ -177,7 +241,7 @@ export default function Products() {
         <div className="ad-search"><Search size={16} /><input placeholder="Search products" value={q} onChange={(e) => setQ(e.target.value)} /></div>
         <select className="ad-input" value={cat} onChange={(e) => setCat(e.target.value)} aria-label="Category">
           <option value="">All categories</option>
-          {CATS.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+          {cats.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
         </select>
         <label className="ad-check">
           <input type="checkbox" checked={lowOnly} onChange={(e) => setParams(e.target.checked ? { low: '1' } : {})} /> Low stock only
@@ -205,7 +269,7 @@ export default function Products() {
                           <div><b>{p.name}</b><span className="ad-muted">{p.unit} · #{p.pid}</span></div>
                         </div>
                       </td>
-                      <td>{CAT_LABEL[p.category] || p.category}</td>
+                      <td>{catLabel[p.category] || p.category}</td>
                       <td>
                         <b>{rs(p.price)}</b>
                         {p.mrp && <span className="ad-mrp">{rs(p.mrp)}</span>}
@@ -235,7 +299,7 @@ export default function Products() {
         </div>
       )}
 
-      {editing && <ProductForm initial={editing} onSaved={onSaved} onClose={() => setEditing(null)} />}
+      {editing && <ProductForm initial={editing} onSaved={onSaved} onClose={() => setEditing(null)} cats={cats} setCats={setCats} />}
     </>
   )
 }

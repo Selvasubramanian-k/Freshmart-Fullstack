@@ -4,9 +4,9 @@ from pydantic import BaseModel, Field, model_validator
 
 DATE_PATTERN = r"^\d{4}-\d{2}-\d{2}$"
 
-# Same category ids the customer frontend uses (src/customer/data/categories.js)
-CATEGORY_IDS = ["dairy", "fruits", "meat", "snacks", "beverage", "breakfast", "cooking", "home", "petcare"]
-CATEGORY_PATTERN = r"^(" + "|".join(CATEGORY_IDS) + r")$"
+# Category ids live in the `categories` collection (admin can add/delete). Here we only check the shape;
+# the controller checks the id really exists.
+CATEGORY_PATTERN = r"^[a-z0-9][a-z0-9-]{1,39}$"
 
 
 class ProductTag(str, Enum):

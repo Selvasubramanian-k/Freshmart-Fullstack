@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Query
 
-from app.controllers import product_controller, store_controller
-from app.models.product import CATEGORY_IDS
+from app.controllers import category_controller, product_controller, store_controller
 
 router = APIRouter(prefix="/api", tags=["Public catalog"])
 
@@ -22,7 +21,7 @@ async def get_product(pid: int):
 
 @router.get("/categories")
 async def categories():
-    return CATEGORY_IDS
+    return await category_controller.list_categories()
 
 
 @router.get("/stores")

@@ -16,6 +16,8 @@ async def connect_db() -> None:
     db_state.client = AsyncMongoClient(settings.MONGO_URI)
     db_state.db = db_state.client[settings.DB_NAME]
     await create_indexes()
+    from app.controllers.category_controller import seed_defaults  # late import: avoids a cycle
+    await seed_defaults()
     print(f"[db] Connected to MongoDB -> {settings.DB_NAME}")
 
 
@@ -41,5 +43,6 @@ async def create_indexes() -> None:
     await db.orders.create_index([("store_id", ASCENDING), ("status", ASCENDING)])
     await db.complaints.create_index([("store_id", ASCENDING), ("status", ASCENDING)])
     await db.staff.create_index([("store_id", ASCENDING)])
+    await db.categories.create_index([("id", ASCENDING)], unique=True)
     await db.orders.create_index([("status", ASCENDING), ("partner", ASCENDING)])
     await db.orders.create_index([("partner.id", ASCENDING), ("delivered_at", DESCENDING)])

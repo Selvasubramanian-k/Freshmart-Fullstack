@@ -8,6 +8,7 @@
 // ─────────────────────────────────────────────────────────────
 import { api } from '../../shared/api/client.js'
 import { resolveImage } from '../../shared/utils/images.js'
+import { setCategories } from './categories.js'
 
 export const PRODUCTS = []
 
@@ -31,12 +32,17 @@ export function toUiProduct(p) {
     stock:     p.stock,
     storeId:   p.store_id,
     storeName: p.store_name,
-    expiry:    p.expiry_date || null,
   }
 }
 
 export async function loadCatalog() {
-  const list = await api.get('/api/products')
+  const [list, cats] = await Promise.all([
+    api.get('/api/products'),
+    api.get('/api/categories').catch(() => null),   // fail aana static list ah vachukkum
+  ])
   PRODUCTS.splice(0, PRODUCTS.length, ...list.map(toUiProduct))
+  if (Array.isArray(cats) && cats.length && typeof cats[0] === 'object') {
+    setCategories(cats, new Set(PRODUCTS.map(p => p.cat)))   // empty category customer ku hide
+  }
   return PRODUCTS
 }

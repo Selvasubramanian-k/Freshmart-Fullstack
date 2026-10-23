@@ -4,6 +4,7 @@ from fastapi import HTTPException, status
 from pymongo import ReturnDocument
 
 from app.config import settings
+from app.controllers.category_controller import ensure_category
 from app.controllers.store_controller import get_admin_store_doc
 from app.database import get_db
 from app.models.product import ProductCreate, ProductUpdate, StockUpdate
@@ -18,8 +19,10 @@ async def next_pid() -> int:
     return doc["seq"]
 
 
-def product_out(doc: dict) -> dict:
+def product_out(doc: dict, public: bool = False) -> dict:
     p = serialize(doc)
+    if public:
+        p.pop("expiry_date", None)   # expiry is only for the store admin
     mrp = p.get("mrp")
     p["discount"] = round((mrp - p["price"]) / mrp * 100) if mrp and mrp > p["price"] else None
     return p
@@ -28,6 +31,7 @@ def product_out(doc: dict) -> dict:
 # ---------------- Admin (shop owner) ----------------
 async def create_product(admin: dict, data: ProductCreate) -> dict:
     store = await get_admin_store_doc(admin)
+    await ensure_category(data.category)
     doc = {
         **data.model_dump(mode="json"),
         "pid": await next_pid(),
@@ -67,6 +71,8 @@ async def update_product(admin: dict, pid: int, data: ProductUpdate) -> dict:
     updates = data.model_dump(mode="json", exclude_none=True)
     if not updates:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Nothing to update")
+    if updates.get("category") != product.get("category"):
+        await ensure_category(updates.get("category"))
 
     unset = {}
     if updates.get("mrp") == 0:          # 0 -> remove MRP
@@ -124,7 +130,7 @@ async def browse_products(q: str | None = None, category: str | None = None,
     out = []
     for d in docs:
         d["store_name"] = names.get(d["store_id"], "")
-        out.append(product_out(d))
+        out.append(product_out(d, public=True))
     return out
 
 
@@ -132,4 +138,4 @@ async def get_product(pid: int) -> dict:
     product = await get_db().products.find_one({"pid": pid, "is_active": True})
     if not product:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Product not found")
-    return product_out(product)
+    return product_out(product, public=True)

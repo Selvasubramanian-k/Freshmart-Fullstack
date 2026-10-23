@@ -221,7 +221,7 @@ function Navbar({ onCartClick, cartCount, onSearch, user, onLogout, activeCat, o
                 aria-current={activeCat === c.id ? 'true' : undefined}
                 onClick={() => onCategory(c.id)}
               >
-                <span className="zn-cat-icon" aria-hidden="true"><Icon id={c.id} /></span>
+                <span className="zn-cat-icon" aria-hidden="true"><Icon name={c.icon} id={c.id} /></span>
                 {c.badge && <span className="zn-cat-badge">{c.badge}</span>}
                 <span className="zn-cat-label">{c.label}</span>
               </button>
