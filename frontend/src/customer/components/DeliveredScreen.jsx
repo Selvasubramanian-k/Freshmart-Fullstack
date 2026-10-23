@@ -1,30 +1,38 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Check, Star } from 'lucide-react'
 import { api } from '../../shared/api/client.js'
 
 // ─────────────────────────────────────────────────────────────
 //  "Order delivered!" full screen (design A). Track page la status
 //  delivered aanadhum idhu varum, countdown mudinjadhum home ku pogum.
-//  Star kudutha countdown thirumba aarambikkum (rating podra time kudukka).
+//  5 seconds mattum. Star kudutha udane home ku pogum (star fill aagura
+//  maadhiri oru chinna 0.6s pause mattum).
 // ─────────────────────────────────────────────────────────────
-const SECONDS = 6
+const SECONDS = 5
+const AFTER_RATING_MS = 600
 const toDate = (iso) => (iso ? new Date(/Z$|[+-]\d\d:\d\d$/.test(iso) ? iso : `${iso}Z`) : null)
 const rs = (n) => `₹${Number(n || 0).toFixed(0)}`
 
 export default function DeliveredScreen({ order, onDone }) {
   const [left, setLeft] = useState(SECONDS)
   const [stars, setStars] = useState(order.rating?.stars || 0)
-  const [saved, setSaved] = useState(false)
+  const [rated, setRated] = useState(false)
+  const leaving = useRef(false)
+  const finish = () => { if (!leaving.current) { leaving.current = true; onDone() } }
 
+  // countdown (stops once a star is tapped)
   useEffect(() => {
-    if (left <= 0) { onDone(); return }
+    if (rated) return
+    if (left <= 0) { finish(); return }
     const t = setTimeout(() => setLeft((s) => s - 1), 1000)
     return () => clearTimeout(t)
-  }, [left, onDone])
+  }, [left, rated]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const rate = (n) => {
-    setStars(n); setLeft(SECONDS); setSaved(false)
-    api.post(`/api/customer/orders/${order.id}/rate`, { stars: n }).then(() => setSaved(true)).catch(() => {})
+    if (rated) return
+    setStars(n); setRated(true)
+    api.post(`/api/customer/orders/${order.id}/rate`, { stars: n }).catch(() => {})  // save in background
+    setTimeout(finish, AFTER_RATING_MS)
   }
 
   const placed = toDate(order.created_at)
@@ -60,18 +68,18 @@ export default function DeliveredScreen({ order, onDone }) {
         <span>{rider ? `How was ${rider}'s delivery?` : 'How was your delivery?'}</span>
         <div className="dv-stars">
           {[1, 2, 3, 4, 5].map((n) => (
-            <button key={n} type="button" aria-label={`${n} star${n > 1 ? 's' : ''}`} aria-pressed={n <= stars} onClick={() => rate(n)}>
+            <button key={n} type="button" disabled={rated} aria-label={`${n} star${n > 1 ? 's' : ''}`} aria-pressed={n <= stars} onClick={() => rate(n)}>
               <Star size={26} fill={n <= stars ? '#f5a623' : 'none'} color={n <= stars ? '#f5a623' : '#9aa3ad'} />
             </button>
           ))}
         </div>
-        {saved && <small>Thanks for rating!</small>}
+        {rated && <small>Thanks for rating!</small>}
       </div>
 
       <div className="dv-foot">
         <div className="dv-bar" aria-hidden="true"><span style={{ width: `${((SECONDS - left) / SECONDS) * 100}%` }} /></div>
-        <span className="dv-count" aria-live="polite">{left > 0 ? `Taking you home in ${left}s` : 'Opening home…'}</span>
-        <button type="button" className="dv-btn" onClick={onDone}>Continue shopping</button>
+        <span className="dv-count" aria-live="polite">{rated || left <= 0 ? 'Opening home…' : `Taking you home in ${left}s`}</span>
+        <button type="button" className="dv-btn" onClick={finish}>Continue shopping</button>
       </div>
     </div>
   )
