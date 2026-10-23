@@ -4,6 +4,7 @@ import { Bike, ClipboardList, Download, RefreshCw, Search, MapPin, Phone, Credit
 import { api } from '../../shared/api/client.js'
 import { resolveImage } from '../../shared/utils/images.js'
 import { Empty, ErrorNote, Modal, PageHead, StatusBadge } from '../components/ui.jsx'
+import OrderJourney from '../components/OrderJourney.jsx'
 import { actionsFor, ORDER_STATUS, PAY_NAMES, SLOT_NAMES, fmtDateTime, rs } from '../utils/format.js'
 
 const TABS = [
@@ -169,14 +170,7 @@ function OrderDetail({ order, onClose, onUpdated }) {
           </div>
         </div>
 
-        <div>
-          <p className="ad-od-h">Timeline</p>
-          <ol className="ad-timeline">
-            {order.status_history.map((h, i) => (
-              <li key={i}><b>{ORDER_STATUS[h.status]?.label || h.status}</b> <span className="ad-muted">{fmtDateTime(h.at)}</span>{h.note && <p>{h.note}</p>}</li>
-            ))}
-          </ol>
-        </div>
+        <OrderJourney order={order} />
 
         <ErrorNote>{error}</ErrorNote>
         {actions.length > 0 && (
