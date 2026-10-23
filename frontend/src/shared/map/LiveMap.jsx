@@ -49,7 +49,7 @@ const riderIcon = (label) => L.divIcon({
 })
 
 // routeStyle: 'road' = solid road route, 'dotted' = curved dotted line (before the rider is on the way)
-export default function LiveMap({ rider, riderLabel, places = [], route, routeColor = '#00a870', routeStyle = 'road', fitKey, fitPadding, className = '' }) {
+export default function LiveMap({ rider, riderLabel, places = [], route, routeColor = '#00a870', routeStyle = 'road', fitKey, fitPadding, zoomPosition = 'bottomright', className = '' }) {
   const boxRef = useRef(null)
   const mapRef = useRef(null)
   const layersRef = useRef({ places: null, route: null, routeHalo: null, rider: null })
@@ -62,7 +62,7 @@ export default function LiveMap({ rider, riderLabel, places = [], route, routeCo
   // create the map once
   useEffect(() => {
     const map = L.map(boxRef.current, { zoomControl: false, attributionControl: true })
-    L.control.zoom({ position: 'bottomright', zoomInTitle: 'Zoom in', zoomOutTitle: 'Zoom out' }).addTo(map)
+    L.control.zoom({ position: zoomPosition, zoomInTitle: 'Zoom in', zoomOutTitle: 'Zoom out' }).addTo(map)
     // Free OpenStreetMap tiles (no API key). For heavy production traffic set
     // VITE_MAP_TILE_URL to a tile provider you have an account with.
     L.tileLayer(import.meta.env.VITE_MAP_TILE_URL || 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -93,7 +93,7 @@ export default function LiveMap({ rider, riderLabel, places = [], route, routeCo
       riderPos.current = null
       fittedRef.current = null
     }
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps -- map is created once
 
   // place pins
   const placesKey = JSON.stringify(places.map((p) => [p.id, p.kind, p.lat, p.lng, p.label]))

@@ -230,7 +230,7 @@ async def _respond_simple(c: dict, data: ComplaintRespond) -> None:
 
 # ---------------- Exchange = a free replacement order ----------------
 async def _create_exchange_order(c: dict, now) -> dict:
-    """Copy the exchanged items into a ₹0 order (status confirmed) so the normal
+    """Copy the exchanged items into a ₹0 order (already packed) so the normal
     delivery flow picks it up: riders see it, accept, pick up, deliver with a code."""
     db = get_db()
     order = await db.orders.find_one({"_id": c["order_id"]})
@@ -272,10 +272,12 @@ async def _create_exchange_order(c: dict, now) -> dict:
         "address": order["address"],
         "instructions": ["Exchange: collect the old item from the customer and bring it back to the store"],
         "slot": None,
-        "status": "confirmed",
+        # store approved = the fresh item is ready, so the rider can pick it up straight away
+        "status": "packed",
         "status_history": [
             {"status": "placed", "at": now, "note": f"Exchange for #{order['order_number']}"},
             {"status": "confirmed", "at": now, "note": "Exchange approved by the store"},
+            {"status": "packed", "at": now, "note": "Fresh item ready for pickup"},
         ],
         "delivery_code": f"{secrets.randbelow(10000):04d}",
         "partner": None,

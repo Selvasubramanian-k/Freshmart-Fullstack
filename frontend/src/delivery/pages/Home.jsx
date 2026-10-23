@@ -82,7 +82,7 @@ export default function Home() {
   return (
     <div className="rd-home">
       <div className="rd-map">
-        <LiveMap rider={me.is_online ? pos : null} places={pins} fitKey={`home-${pins.length}-${hasPoint(pos)}`} />
+        <LiveMap zoomPosition="topright" rider={me.is_online ? pos : null} places={pins} fitKey={`home-${pins.length}-${hasPoint(pos)}`} />
       </div>
 
       <div className="rd-topbar">

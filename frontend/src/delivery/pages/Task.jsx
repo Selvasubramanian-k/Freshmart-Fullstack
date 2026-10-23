@@ -134,6 +134,7 @@ export default function Task({ onDone }) {
     <div className="rd-home">
       <div className="rd-map">
         <LiveMap
+          zoomPosition="topright"
           rider={pos}
           places={places}
           route={route?.coords}
