@@ -6,6 +6,19 @@ from app.database import get_db
 from app.models.complaint import ComplaintCreate, ComplaintRespond
 from app.utils.helpers import now_utc, serialize, to_object_id
 
+ITEM_PROBLEMS = {"damaged", "missing_item", "wrong_item", "quality", "expired"}
+OPEN = ["open", "in_progress"]
+
+
+def _hist(status_: str, note: str, at=None) -> dict:
+    return {"status": status_, "at": at or now_utc(), "note": note}
+
+
+async def _credit_wallet(user_id: ObjectId, amount: float, note: str) -> None:
+    db = get_db()
+    await db.users.update_one({"_id": user_id}, {"$inc": {"wallet_balance": round(amount, 2)}})
+    await db.wallet_txns.insert_one({"user_id": user_id, "amount": round(amount, 2), "note": note, "at": now_utc()})
+
 
 # ---------------- Customer ----------------
 async def create_complaint(customer: dict, data: ComplaintCreate) -> dict:
@@ -16,20 +29,12 @@ async def create_complaint(customer: dict, data: ComplaintCreate) -> dict:
     if not order:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Order not found")
 
-    if data.type.value == "return":
-        if order["status"] != "delivered":
-            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Only delivered orders can be returned")
-    existing = await db.complaints.find_one(
-        {"order_id": order["_id"], "type": data.type.value, "status": {"$in": ["open", "in_progress"]}}
-    )
-    if existing:
-        raise HTTPException(status.HTTP_409_CONFLICT, "You already have an open request of this type for this order")
-
     now = now_utc()
     doc = {
         "order_id": order["_id"],
         "order_number": order["order_number"],
         "store_id": order["store_id"],
+        "store_name": order.get("store_name"),
         "customer_id": order["customer_id"],
         "customer_name": customer["name"],
         "customer_phone": customer.get("phone"),
@@ -37,13 +42,53 @@ async def create_complaint(customer: dict, data: ComplaintCreate) -> dict:
         "description": data.description,
         "status": "open",
         "response": None,
+        "history": [_hist("open", "Request sent", now)],
         "created_at": now,
         "updated_at": now,
     }
+
+    if data.resolution:  # ---- refund / exchange for items in a delivered order ----
+        if order["status"] != "delivered":
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "You can ask for a refund or exchange after the order is delivered")
+        if data.type.value not in ITEM_PROBLEMS:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Pick what went wrong with the items")
+        if not data.items:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Pick at least one item")
+        if await db.complaints.find_one({"order_id": order["_id"], "resolution": {"$exists": True}, "status": {"$in": OPEN}}):
+            raise HTTPException(status.HTTP_409_CONFLICT, "This order already has an open request")
+        lines = {i["pid"]: i for i in order["items"]}
+        picked, amount = [], 0.0
+        for it in data.items:
+            line = lines.get(it.pid)
+            if not line:
+                raise HTTPException(status.HTTP_400_BAD_REQUEST, "That item is not in this order")
+            qty = min(it.quantity, line["quantity"])
+            each = line["line_total"] / line["quantity"]
+            amount += each * qty
+            picked.append({"pid": it.pid, "name": line["name"], "unit": line.get("unit", ""),
+                           "image_url": line.get("image_url"), "quantity": qty, "amount": round(each * qty, 2)})
+        photos = [p for p in data.photos if isinstance(p, str) and p.startswith("/uploads/")]
+        refund_to = data.refund_to.value
+        if order["payment"]["method"] == "cod":
+            refund_to = "cash"  # cash orders: refund goes to FreshMart Cash
+        doc.update({
+            "items": picked,
+            "amount": round(amount, 2),
+            "resolution": data.resolution.value,
+            "refund_to": refund_to if data.resolution.value == "refund" else None,
+            "payment_method": order["payment"]["method"],
+            "photos": photos,
+        })
+    else:  # ---- older simple requests (late delivery, other, return of whole order) ----
+        if data.type.value == "return" and order["status"] != "delivered":
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Only delivered orders can be returned")
+        if await db.complaints.find_one({"order_id": order["_id"], "type": data.type.value, "status": {"$in": OPEN}}):
+            raise HTTPException(status.HTTP_409_CONFLICT, "You already have an open request of this type for this order")
+
     res = await db.complaints.insert_one(doc)
     doc["_id"] = res.inserted_id
 
-    if data.type.value == "return":
+    if data.type.value == "return" and not data.resolution:
         await db.orders.update_one(
             {"_id": order["_id"]},
             {"$set": {"status": "return_requested", "updated_at": now},
@@ -57,10 +102,32 @@ async def my_complaints(customer: dict) -> list[dict]:
     return serialize(docs)
 
 
+async def cancel_my_complaint(customer: dict, complaint_id: str) -> dict:
+    db = get_db()
+    c = await db.complaints.find_one({"_id": to_object_id(complaint_id, "request id"), "customer_id": ObjectId(customer["id"])})
+    if not c:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Request not found")
+    if c["status"] != "open":
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Only a request still under review can be cancelled")
+    now = now_utc()
+    await db.complaints.update_one(
+        {"_id": c["_id"]},
+        {"$set": {"status": "cancelled", "updated_at": now}, "$push": {"history": _hist("cancelled", "Cancelled by you", now)}},
+    )
+    return serialize(await db.complaints.find_one({"_id": c["_id"]}))
+
+
+async def my_wallet(customer: dict) -> dict:
+    db = get_db()
+    u = await db.users.find_one({"_id": ObjectId(customer["id"])}, {"wallet_balance": 1})
+    txns = await db.wallet_txns.find({"user_id": ObjectId(customer["id"])}).sort("at", -1).to_list(20)
+    return {"balance": round((u or {}).get("wallet_balance", 0) or 0, 2), "txns": serialize(txns)}
+
+
 # ---------------- Store admin ----------------
 async def store_complaints(admin: dict, status_filter: str | None = None) -> list[dict]:
     store = await get_admin_store_doc(admin)
-    query: dict = {"store_id": store["_id"]}
+    query: dict = {"store_id": store["_id"], "status": {"$ne": "cancelled"}}
     if status_filter:
         query["status"] = status_filter
     docs = await get_db().complaints.find(query).sort("created_at", -1).to_list(500)
@@ -73,15 +140,62 @@ async def respond_complaint(admin: dict, complaint_id: str, data: ComplaintRespo
     c = await db.complaints.find_one({"_id": to_object_id(complaint_id, "complaint id"), "store_id": store["_id"]})
     if not c:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Complaint not found")
-    if c["status"] in ("resolved", "rejected"):
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "This complaint is already closed")
+    if c["status"] in ("resolved", "rejected", "cancelled"):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "This request is already closed")
 
+    if c.get("resolution"):
+        await _respond_item_request(c, data)
+    else:
+        await _respond_simple(c, data)
+    return serialize(await db.complaints.find_one({"_id": c["_id"]}))
+
+
+async def _respond_item_request(c: dict, data: ComplaintRespond) -> None:
+    """Refund / exchange flow: open -> approved (in_progress) -> resolved, or rejected."""
+    db = get_db()
+    now = now_utc()
+    want = data.status.value
+    sets: dict = {"response": data.response, "updated_at": now}
+    hist: list[dict] = []
+
+    if want == "rejected":
+        sets["status"] = "rejected"
+        hist.append(_hist("rejected", data.response, now))
+    elif want in ("in_progress", "resolved") and c["status"] == "open":
+        hist.append(_hist("approved", data.response, now))
+        sets["approved_at"] = now
+        if c["resolution"] == "refund":
+            amt = c.get("amount", 0)
+            if c.get("refund_to") == "cash":
+                await _credit_wallet(c["customer_id"], amt, f"Refund for #{c['order_number']}")
+                note = f"₹{amt:g} added to FreshMart Cash"
+            else:
+                await db.orders.update_one(
+                    {"_id": c["order_id"]},
+                    {"$set": {"payment.refund_amount": amt, "payment.refunded_at": now}},
+                )
+                note = f"₹{amt:g} refund sent to your original payment (3–5 working days)"
+            sets.update({"status": "resolved", "refunded_at": now})
+            hist.append(_hist("resolved", note, now))
+        else:  # exchange: approved now, delivered later
+            sets["status"] = "in_progress"
+    elif want == "resolved" and c["status"] == "in_progress" and c["resolution"] == "exchange":
+        sets.update({"status": "resolved", "exchanged_at": now})
+        hist.append(_hist("resolved", "New item delivered, old item collected", now))
+    else:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "That step is not allowed for this request")
+
+    await db.complaints.update_one({"_id": c["_id"]}, {"$set": sets, "$push": {"history": {"$each": hist}}})
+
+
+async def _respond_simple(c: dict, data: ComplaintRespond) -> None:
+    db = get_db()
     now = now_utc()
     await db.complaints.update_one(
         {"_id": c["_id"]},
-        {"$set": {"status": data.status.value, "response": data.response, "updated_at": now}},
+        {"$set": {"status": data.status.value, "response": data.response, "updated_at": now},
+         "$push": {"history": _hist(data.status.value, data.response, now)}},
     )
-
     order = await db.orders.find_one({"_id": c["order_id"]})
     if order and data.status.value in ("resolved", "rejected"):
         if c["type"] == "return":
@@ -100,5 +214,3 @@ async def respond_complaint(admin: dict, complaint_id: str, data: ComplaintRespo
                 {"_id": order["_id"]},
                 {"$set": {"payment.status": "refunded", "payment.refunded_at": now, "updated_at": now}},
             )
-
-    return serialize(await db.complaints.find_one({"_id": c["_id"]}))

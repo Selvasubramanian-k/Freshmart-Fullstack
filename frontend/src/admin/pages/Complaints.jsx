@@ -1,18 +1,94 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { MessageSquareWarning } from 'lucide-react'
 import { api } from '../../shared/api/client.js'
+import { resolveImage } from '../../shared/utils/images.js'
 import { Empty, ErrorNote, PageHead, StatusBadge } from '../components/ui.jsx'
 import { COMPLAINT_TYPES, fmtDateTime } from '../utils/format.js'
 
 const C_STATUS = {
   open:        { label: 'Open',        tone: 'amber' },
-  in_progress: { label: 'In progress', tone: 'blue' },
+  in_progress: { label: 'Approved', tone: 'blue' },
   resolved:    { label: 'Resolved',    tone: 'green' },
   rejected:    { label: 'Rejected',    tone: 'red' },
 }
 const FILTERS = [['open', 'Needs action'], ['closed', 'Closed'], ['all', 'All']]
 
+const PAY = { gpay: 'GPay', phonepe: 'PhonePe', paytm: 'Paytm', bhim: 'BHIM', card: 'Card', nb: 'Net Banking', cod: 'Cash' }
+const rs = (n) => `₹${Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`
+
+// Refund / exchange request for items: Approve -> (exchange) Mark exchanged, or Reject
+function ItemRequest({ c, onSaved }) {
+  const ex = c.resolution === 'exchange'
+  const [reply, setReply] = useState(c.response || '')
+  const [busy, setBusy]   = useState(false)
+  const [error, setError] = useState('')
+  const closed = ['resolved', 'rejected'].includes(c.status)
+  const to = c.refund_to === 'source' ? `${PAY[c.payment_method] || 'original payment'} (3–5 days)` : 'FreshMart Cash (instant)'
+
+  const act = async (status, fallback) => {
+    const text = reply.trim() || fallback
+    if (!text) { setError('Write a short reply for the customer first.'); return }
+    setBusy(true); setError('')
+    try { onSaved(await api.patch(`/api/admin/complaints/${c.id}`, { status, response: text })) }
+    catch (e) { setError(e.message) }
+    finally { setBusy(false) }
+  }
+
+  return (
+    <div className="ad-card ad-complaint">
+      <div className="ad-card-head">
+        <div>
+          <h2>{ex ? 'Exchange' : 'Refund'} · {COMPLAINT_TYPES[c.type] || c.type} · <span className="mono">#{c.order_number}</span></h2>
+          <p className="ad-muted ad-small">{c.customer_name}{c.customer_phone ? ` · +91 ${c.customer_phone}` : ''} · {fmtDateTime(c.created_at)}</p>
+        </div>
+        <StatusBadge status={c.status} map={C_STATUS} />
+      </div>
+      <div className="ad-req-items">
+        {(c.items || []).map((i) => (
+          <div key={i.pid} className="ad-row"><span>{i.name} <span className="ad-muted">{i.unit} × {i.quantity}</span></span><b>{rs(i.amount)}</b></div>
+        ))}
+        <div className="ad-row"><span className="ad-muted">{ex ? 'Customer wants' : 'Refund to'}</span><b>{ex ? 'A fresh replacement (collect the old one)' : `${rs(c.amount)} → ${to}`}</b></div>
+      </div>
+      <p className="ad-quote">{c.description}</p>
+      {c.photos?.length > 0 && (
+        <div className="ad-req-photos">
+          {c.photos.map((p) => <a key={p} href={resolveImage(p)} target="_blank" rel="noreferrer"><img src={resolveImage(p)} alt="Customer photo" /></a>)}
+        </div>
+      )}
+
+      {closed ? (
+        c.response && <p className="ad-reply"><b>Your reply:</b> {c.response}</p>
+      ) : c.status === 'in_progress' ? (
+        <>
+          <p className="ad-reply"><b>Approved.</b> Send the fresh item and collect the old one, then mark it done.</p>
+          <ErrorNote>{error}</ErrorNote>
+          <div className="ad-form-actions">
+            <button className="ad-btn" disabled={busy} onClick={() => act('resolved', c.response)}>Mark exchanged (new item delivered)</button>
+          </div>
+        </>
+      ) : (
+        <>
+          <textarea className="ad-input" rows={2} placeholder={ex ? 'e.g. Sorry! A fresh one is on the way.' : 'e.g. Sorry! Refund approved.'}
+            value={reply} onChange={(e) => setReply(e.target.value)} />
+          <ErrorNote>{error}</ErrorNote>
+          <div className="ad-form-actions">
+            <button className="ad-btn ghost danger" disabled={busy} onClick={() => act('rejected', '')}>Reject</button>
+            <button className="ad-btn" disabled={busy} onClick={() => act('in_progress', ex ? 'Sorry about this! A fresh one is on the way.' : 'Sorry about this! Refund approved.')}>
+              {ex ? 'Approve exchange' : `Approve refund · ${rs(c.amount)}`}
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 function ComplaintCard({ c, onSaved }) {
+  if (c.resolution) return <ItemRequest c={c} onSaved={onSaved} />
+  return <SimpleComplaint c={c} onSaved={onSaved} />
+}
+
+function SimpleComplaint({ c, onSaved }) {
   const [reply, setReply] = useState(c.response || '')
   const [busy, setBusy]   = useState(false)
   const [error, setError] = useState('')
@@ -70,7 +146,7 @@ export default function Complaints() {
 
   return (
     <>
-      <PageHead title="Returns & Complaints" sub="Approving a return marks the order returned and refunds online payments." />
+      <PageHead title="Returns & Complaints" sub="Refunds go out when you approve. Exchanges: approve, send a fresh item, then mark exchanged." />
       <div className="ad-tabs">
         {FILTERS.map(([id, label]) => (
           <button key={id} className={`ad-tab ${filter === id ? 'on' : ''}`} onClick={() => setFilter(id)}>{label}</button>

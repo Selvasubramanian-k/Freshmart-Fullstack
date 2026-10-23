@@ -5,7 +5,7 @@ import OrderTimeline from '../components/OrderTimeline.jsx'
 import Icon from '../components/Icon.jsx'
 import Avatar, { AvatarPicker } from '../components/Avatar.jsx'
 import { readAddrs, saveAddrs } from '../utils/addresses.js'
-import { cancelOrder, raiseComplaint, loadComplaints } from '../utils/orderHistory.js'
+import { cancelOrder, raiseComplaint, loadComplaints, loadWallet, requestSummary } from '../utils/orderHistory.js'
 import { getProduct } from '../data/products.js'
 import { resolveImage } from '../../shared/utils/images.js'
 import { useAuth } from '../../shared/context/AuthContext.jsx'
@@ -23,15 +23,13 @@ const STATUS_TEXT = {
   return_requested: 'Return requested', returned: 'Returned and refunded',
 }
 const ISSUE_TYPES = [
-  { id: 'return',        label: 'Return items', deliveredOnly: true },
-  { id: 'damaged',       label: 'Damaged item' },
-  { id: 'missing_item',  label: 'Missing item' },
-  { id: 'quality',       label: 'Quality issue' },
   { id: 'late_delivery', label: 'Late delivery' },
-  { id: 'refund',        label: 'Refund' },
   { id: 'other',         label: 'Something else' },
 ]
-const ISSUE_LABEL = Object.fromEntries(ISSUE_TYPES.map(t => [t.id, t.label]))
+const ISSUE_LABEL = {
+  return: 'Return items', refund: 'Refund', damaged: 'Damaged item', missing_item: 'Missing item', wrong_item: 'Wrong item',
+  quality: 'Quality issue', expired: 'Expired', late_delivery: 'Late delivery', other: 'Something else',
+}
 const PAY_NAMES = { gpay: 'GPay', phonepe: 'PhonePe', paytm: 'Paytm', bhim: 'BHIM', card: 'Card', nb: 'Net Banking', cod: 'Cash on Delivery' }
 
 const fmtDate = (iso) => {
@@ -44,7 +42,8 @@ const fmtDate = (iso) => {
 }
 const rs = (n) => `₹${Number(n).toFixed(2)}`
 
-function OrderCard({ order, onOrderAgain, onChanged }) {
+function OrderCard({ order, request, onOrderAgain, onChanged }) {
+  const navigate = useNavigate()
   const o = order.raw
   const live = ['placed', 'confirmed', 'packed', 'out_for_delivery'].includes(o.status)
   const [open, setOpen]       = useState(live)   // live orders open with the timeline showing
@@ -53,8 +52,15 @@ function OrderCard({ order, onOrderAgain, onChanged }) {
   const [msg, setMsg]         = useState('')
 
   const canCancel = ['placed', 'confirmed'].includes(o.status)
-  const canIssue  = !['cancelled', 'returned', 'return_requested'].includes(o.status)
-  const types     = ISSUE_TYPES.filter(t => !t.deliveredOnly || o.status === 'delivered')
+  const reqOpen   = request && ['open', 'in_progress'].includes(request.status)
+  const canIssue  = !['cancelled', 'returned', 'return_requested'].includes(o.status) && !reqOpen
+  const types     = ISSUE_TYPES
+  const sum       = request ? requestSummary(request) : null
+  // delivered -> refund / exchange page; still on the way -> short note to the store
+  const startIssue = () => {
+    if (o.status === 'delivered') { navigate(`/issue/${o.id}`); return }
+    setMsg(''); setIssue({ type: types[0].id, text: '' })
+  }
 
   const doCancel = async () => {
     if (!window.confirm('Cancel this order?')) return
@@ -98,12 +104,20 @@ function OrderCard({ order, onOrderAgain, onChanged }) {
       </div>
 
 
+      {sum && (
+        <button type="button" className={`acc-issue-strip ${sum.tone}`} onClick={() => navigate(`/issue/${o.id}?c=${request.id}`)}>
+          <span className="acc-issue-ic"><Icon name={sum.tone === 'wait' ? 'clock' : sum.tone === 'bad' || sum.tone === 'off' ? 'x' : 'check'} /></span>
+          <span><b>{sum.title}</b><small>{sum.sub}</small></span>
+          <em>View ›</em>
+        </button>
+      )}
+
       {open && (
         <div className="acc-order-detail">
           <OrderTimeline
             order={o}
             onRefresh={onChanged}
-            onIssue={canIssue && !issue ? () => { setMsg(''); setIssue({ type: types[0].id, text: '' }) } : null}
+            onIssue={canIssue && !issue ? startIssue : null}
           />
           <div className="acc-lines">
             {o.items.map(it => (
@@ -143,8 +157,8 @@ function OrderCard({ order, onOrderAgain, onChanged }) {
         <button className="acc-again" onClick={() => onOrderAgain(order.items)}>Order Again</button>
         {canCancel && <button className="acc-again danger" disabled={busy} onClick={doCancel}>Cancel order</button>}
         {canIssue && !issue && (
-          <button className="acc-again" onClick={() => { setMsg(''); setIssue({ type: types[0].id, text: '' }) }}>
-            {o.status === 'delivered' ? 'Return / Report issue' : 'Report issue'}
+          <button className="acc-again" onClick={startIssue}>
+            {o.status === 'delivered' ? 'Refund / Exchange' : 'Report issue'}
           </button>
         )}
       </div>
@@ -165,8 +179,23 @@ export default function Account({ user, orders, increment, onLogout, onOpenCart,
   const [profile, setProfile] = useState({ name: user?.name || '', phone: user?.phone || '' })
   const [profileMsg, setProfileMsg] = useState('')
 
-  const reloadComplaints = () => loadComplaints().then(setComplaints).catch(() => {})
+  const [wallet, setWallet] = useState(0)
+  const reloadComplaints = () => {
+    loadComplaints().then(setComplaints).catch(() => {})
+    loadWallet().then((w) => setWallet(w.balance)).catch(() => {})
+  }
   useEffect(() => { reloadComplaints() }, [])
+  // latest refund / exchange request for each order (an active one wins over a cancelled one)
+  const reqByOrder = {}
+  complaints.filter(c => c.resolution).forEach(c => {
+    const had = reqByOrder[c.order_id]
+    if (!had || (had.status === 'cancelled' && c.status !== 'cancelled')) reqByOrder[c.order_id] = c
+  })
+  const itemReqs = complaints.filter(c => c.resolution)
+  const openReqs = itemReqs.filter(c => ['open', 'in_progress'].includes(c.status))
+  const closedReqs = itemReqs.filter(c => !['open', 'in_progress'].includes(c.status))
+  const simple = complaints.filter(c => !c.resolution)
+  const refunded = itemReqs.filter(c => c.status === 'resolved' && c.resolution === 'refund').reduce((a, c) => a + (c.amount || 0), 0)
 
   const sub = user?.phone ? `+91 ${user.phone}` : user?.email || ''
 
@@ -224,7 +253,7 @@ export default function Account({ user, orders, increment, onLogout, onOpenCart,
               <span><Icon name="wallet" /> FreshMart Cash &amp; Gift Card</span><span><Icon name="chevron-right" /></span>
             </div>
             <div className="acc-wallet-bottom">
-              <span>Available Balance: <b>₹0</b></span>
+              <span>Available Balance: <b>₹{Number(wallet).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</b></span>
               <span className="acc-wallet-btn">Add Balance</span>
             </div>
           </button>
@@ -258,21 +287,41 @@ export default function Account({ user, orders, increment, onLogout, onOpenCart,
                   <button className="acc-primary" onClick={() => navigate('/')}>Start shopping</button>
                 </div>
               ) : history.map(o => (
-                <OrderCard key={o.id} order={o} onOrderAgain={orderAgain} onChanged={onChanged} />
+                <OrderCard key={o.id} order={o} request={reqByOrder[o.id]} onOrderAgain={orderAgain} onChanged={onChanged} />
               ))
             )}
 
             {/* SUPPORT: returns + complaints */}
             {tab === 'support' && (
               <>
-                <div className="acc-card">
-                  <h3>How can we help?</h3>
-                  <p className="acc-muted">To return items or report a problem, open the order under <b>Orders</b> and tap <b>Report issue</b>. Replies from the store show up here.</p>
-                  <button className="acc-primary" onClick={() => pick('orders')}>Go to my orders</button>
+                <div className="acc-req-stats">
+                  <div className="acc-card"><b className="acc-big">{openReqs.length}</b><span className="acc-muted">Open requests</span></div>
+                  <div className="acc-card"><b className="acc-big good">₹{Number(refunded).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</b><span className="acc-muted">Refunded so far</span></div>
                 </div>
-                {complaints.length === 0 ? (
-                  <p className="acc-muted acc-center">No requests yet.</p>
-                ) : complaints.map(c => (
+                {itemReqs.length === 0 && simple.length === 0 && (
+                  <div className="acc-card">
+                    <h3>How can we help?</h3>
+                    <p className="acc-muted">Problem with an item? Open the order under <b>Orders</b> and tap <b>Refund / Exchange</b>. You can follow every step here.</p>
+                    <button className="acc-primary" onClick={() => pick('orders')}>Go to my orders</button>
+                  </div>
+                )}
+                {[['OPEN', openReqs], ['CLOSED', closedReqs]].map(([label, list]) => list.length > 0 && (
+                  <div key={label} className="acc-req-list">
+                    <p className="acc-req-group">{label}</p>
+                    {list.map(c => {
+                      const sm = requestSummary(c)
+                      return (
+                        <button type="button" key={c.id} className="acc-req" onClick={() => navigate(`/issue/${c.order_id}?c=${c.id}`)}>
+                          <span className="acc-req-top"><b>{sm.kind} · ₹{Number(c.amount || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</b><span className={`acc-req-pill ${sm.tone}`}>{sm.pill}</span></span>
+                          <small>#{c.order_number} · {sm.sub}</small>
+                          {sm.next && <p>{sm.tone === 'wait' || sm.tone === 'ok' ? `Next: ${sm.next}` : sm.next}</p>}
+                          {sm.tone === 'done' && <p>{sm.title}</p>}
+                        </button>
+                      )
+                    })}
+                  </div>
+                ))}
+                {simple.map(c => (
                   <div className="acc-card" key={c.id}>
                     <div className="acc-row">
                       <b>{ISSUE_LABEL[c.type] || c.type} · #{c.order_number}</b>

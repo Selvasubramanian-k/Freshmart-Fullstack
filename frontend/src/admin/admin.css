@@ -303,3 +303,9 @@ textarea.ad-input { resize: vertical; }
 .ad-pin span { font-size: 13px; color: #6b7280; font-weight: 500; }
 .ad-pin span.ok { color: #007a50; font-weight: 700; font-family: ui-monospace, monospace; }
 .ad-stars { color: #d98a00; letter-spacing: 2px; font-size: 15px; }
+
+/* refund / exchange requests */
+.ad-req-items { display: flex; flex-direction: column; gap: 6px; background: #fafbfc; border-radius: 10px; padding: 10px 12px; }
+.ad-req-items .ad-row { display: flex; justify-content: space-between; gap: 12px; font-size: 13.5px; }
+.ad-req-photos { display: flex; gap: 8px; flex-wrap: wrap; }
+.ad-req-photos img { width: 84px; height: 84px; object-fit: cover; border-radius: 10px; border: 1px solid #e5e7eb; display: block; }

@@ -10,6 +10,7 @@ import Offers      from './pages/Offers.jsx'
 import Contact     from './pages/Contact.jsx'
 import Account     from './pages/Account.jsx'
 import Track       from './pages/Track.jsx'
+import Issue from './pages/Issue.jsx'
 import { getProduct, loadCatalog } from './data/products.js'
 import { loadOrders, placeOrder } from './utils/orderHistory.js'
 import { useAuth } from '../shared/context/AuthContext.jsx'
@@ -201,6 +202,7 @@ export default function CustomerApp() {
         <Route path="/offers"   element={<Offers {...cartProps} onBrowse={setActiveCat} />} />
         <Route path="/contact"  element={<Contact />} />
         <Route path="/track/:orderId" element={<Track />} />
+        <Route path="/issue/:orderId" element={<Issue />} />
         <Route path="*"         element={<Navigate to="/" replace />} />
       </Routes>
 

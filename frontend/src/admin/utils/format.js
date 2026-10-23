@@ -38,5 +38,5 @@ export const SLOT_NAMES = { now: 'Now (10 min)', hour: 'In 1 hour', night: 'Toni
 
 export const COMPLAINT_TYPES = {
   return: 'Return', refund: 'Refund', damaged: 'Damaged item', missing_item: 'Missing item',
-  quality: 'Quality issue', late_delivery: 'Late delivery', other: 'Other',
+  quality: 'Not fresh', late_delivery: 'Late delivery', other: 'Other', wrong_item: 'Wrong item', expired: 'Expired',
 }

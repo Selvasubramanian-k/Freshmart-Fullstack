@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, File, UploadFile, status
 
 from app.controllers import complaint_controller, delivery_controller, order_controller
 from app.middleware.auth import require_customer
 from app.models.complaint import ComplaintCreate
 from app.models.order import CancelRequest, OrderCreate, RateRequest
+from app.utils.uploads import save_image
 
 router = APIRouter(prefix="/api/customer", tags=["Customer"], dependencies=[Depends(require_customer)])
 
@@ -50,3 +51,20 @@ async def create_complaint(data: ComplaintCreate, user: dict = Depends(require_c
 @router.get("/complaints")
 async def my_complaints(user: dict = Depends(require_customer)):
     return await complaint_controller.my_complaints(user)
+
+
+@router.post("/complaints/{complaint_id}/cancel")
+async def cancel_complaint(complaint_id: str, user: dict = Depends(require_customer)):
+    return await complaint_controller.cancel_my_complaint(user, complaint_id)
+
+
+@router.post("/uploads", status_code=status.HTTP_201_CREATED)
+async def upload_photo(file: UploadFile = File(...)):
+    """Photo for a refund / exchange request (JPG, PNG or WEBP, up to 5 MB)."""
+    return {"image_url": await save_image(file, 5 * 1024 * 1024)}
+
+
+# ---------- FreshMart Cash ----------
+@router.get("/wallet")
+async def my_wallet(user: dict = Depends(require_customer)):
+    return await complaint_controller.my_wallet(user)
