@@ -83,11 +83,14 @@ export default function OrderJourney({ order }) {
         })}
       </ol>
 
-      {(storeMins != null || riderMins != null || order.rating) && (
+      {(storeMins != null || riderMins != null || order.rating || cancelled) && (
         <div className="ad-tl-sum">
           {storeMins != null && <span>Store took <b>{fmtMins(storeMins)}</b> to accept{at.packed ? ' + pack' : ''}</span>}
           {riderMins != null && <span>{p?.in_house ? 'Our staff' : 'Rider'} took <b>{fmtMins(riderMins)}</b> to pick up + deliver</span>}
           {order.rating && <span>Customer rated <b>★ {order.rating.stars}</b></span>}
+          {cancelled && (order.cancel
+            ? <span>Customer cancelled{order.cancel.reason ? <>: <b>{order.cancel.reason}</b></> : ''}{order.cancel.message ? ` · “${order.cancel.message}”` : ''}</span>
+            : <span>{order.status_history?.find((h) => h.status === 'cancelled')?.note || 'Cancelled'}</span>)}
         </div>
       )}
       {doneCount === 0 && <p className="ad-muted ad-small">No updates yet.</p>}

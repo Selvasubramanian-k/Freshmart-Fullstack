@@ -244,6 +244,14 @@ export default function Track() {
           <div className="tr-code"><ShieldCheck size={20} /><span>Share this code at your door</span><b>{t.delivery_code.split('').join(' ')}</b></div>
         )}
 
+        {/* customer can cancel until the store packs it */}
+        {['placed', 'confirmed'].includes(t?.status) && !ex && (
+          <div className="tr-cancel">
+            <span>Changed your mind? You can cancel until the store packs it.</span>
+            <button type="button" onClick={() => navigate(`/cancel/${t.id}`)}>Cancel order</button>
+          </div>
+        )}
+
         {showDetails && (
           <div className="tr-details">
             {p && live && (

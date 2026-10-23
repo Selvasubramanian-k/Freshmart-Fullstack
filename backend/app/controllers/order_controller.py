@@ -177,7 +177,14 @@ async def cancel_my_order(customer: dict, order_id: str, data: CancelRequest) ->
     order = await _customer_order(customer, order_id)
     if order["status"] not in CUSTOMER_CANCELLABLE:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "This order can no longer be cancelled")
-    await _apply_cancel(order, f"Cancelled by customer{': ' + data.reason if data.reason else ''}")
+    reason = (data.reason or "").strip()
+    message = (data.message or "").strip()
+    note = "Cancelled by customer" + (f": {reason}" if reason else "") + (f' · "{message}"' if message else "")
+    await _apply_cancel(order, note)
+    await get_db().orders.update_one(
+        {"_id": order["_id"]},
+        {"$set": {"cancel": {"by": "customer", "reason": reason or None, "message": message or None, "at": now_utc()}}},
+    )
     return serialize(await get_db().orders.find_one({"_id": order["_id"]}))
 
 

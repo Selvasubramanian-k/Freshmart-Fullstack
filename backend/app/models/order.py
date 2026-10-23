@@ -85,3 +85,4 @@ class RateRequest(BaseModel):
 
 class CancelRequest(BaseModel):
     reason: str | None = Field(default=None, max_length=200)
+    message: str | None = Field(default=None, max_length=300)   # optional note for the store

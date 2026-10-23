@@ -5,7 +5,7 @@ import OrderTimeline from '../components/OrderTimeline.jsx'
 import Icon from '../components/Icon.jsx'
 import Avatar, { AvatarPicker } from '../components/Avatar.jsx'
 import { readAddrs, saveAddrs } from '../utils/addresses.js'
-import { cancelOrder, raiseComplaint, loadComplaints, loadWallet, requestSummary } from '../utils/orderHistory.js'
+import { raiseComplaint, loadComplaints, loadWallet, requestSummary } from '../utils/orderHistory.js'
 import { getProduct } from '../data/products.js'
 import { resolveImage } from '../../shared/utils/images.js'
 import { useAuth } from '../../shared/context/AuthContext.jsx'
@@ -62,11 +62,7 @@ function OrderCard({ order, request, onOrderAgain, onChanged }) {
     setMsg(''); setIssue({ type: types[0].id, text: '' })
   }
 
-  const doCancel = async () => {
-    if (!window.confirm('Cancel this order?')) return
-    setBusy(true); setMsg('')
-    try { await cancelOrder(o.id); await onChanged() } catch (e) { setMsg(e.message) } finally { setBusy(false) }
-  }
+  const doCancel = () => navigate(`/cancel/${o.id}`)   // cancel page asks why, then confirms
   const submitIssue = async (e) => {
     e.preventDefault()
     if (issue.text.trim().length < 5) { setMsg('Please describe the problem (at least 5 characters).'); return }
