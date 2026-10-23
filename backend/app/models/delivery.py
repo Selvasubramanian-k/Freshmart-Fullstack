@@ -15,3 +15,7 @@ class LocationUpdate(BaseModel):
 class DeliverRequest(BaseModel):
     code: str = Field(..., pattern=r"^\d{4}$")
     cash_collected: bool = False
+
+
+class AssignRequest(BaseModel):
+    rider_id: str

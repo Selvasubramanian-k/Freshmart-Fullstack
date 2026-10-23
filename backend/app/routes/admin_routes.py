@@ -5,11 +5,12 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 
 from app.controllers import (
-    complaint_controller, dashboard_controller, order_controller, product_controller,
+    complaint_controller, dashboard_controller, delivery_controller, order_controller, product_controller,
     staff_controller, store_controller,
 )
 from app.middleware.auth import require_admin
 from app.models.complaint import ComplaintRespond
+from app.models.delivery import AssignRequest
 from app.models.order import OrderStatusUpdate
 from app.models.product import ProductCreate, ProductUpdate, StockUpdate
 from app.models.staff import StaffCreate, StaffUpdate
@@ -121,6 +122,17 @@ async def update_staff(staff_id: str, data: StaffUpdate, user: dict = Depends(re
 @router.delete("/staff/{staff_id}")
 async def remove_staff(staff_id: str, user: dict = Depends(require_admin)):
     return await staff_controller.remove_staff(user, staff_id)
+
+
+# ---------- Store's own delivery staff ----------
+@router.get("/riders")
+async def list_riders(user: dict = Depends(require_admin)):
+    return await delivery_controller.store_riders(user)
+
+
+@router.post("/orders/{order_id}/assign")
+async def assign_order(order_id: str, data: AssignRequest, user: dict = Depends(require_admin)):
+    return await delivery_controller.assign_to_staff(user, order_id, data.rider_id)
 
 
 # ---------- Complaints / returns ----------

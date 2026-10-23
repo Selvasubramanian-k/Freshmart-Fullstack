@@ -15,6 +15,37 @@ const TABS = [
   { id: 'all',       label: 'All',       match: () => true },
 ]
 
+// Store's own delivery staff: send the order with one of them (live tracking via the delivery app)
+function SendWithStaff({ order, onUpdated }) {
+  const [riders, setRiders] = useState(null)
+  const [pick, setPick]     = useState('')
+  const [busy, setBusy]     = useState(false)
+  const [error, setError]   = useState('')
+  useEffect(() => { api.get('/api/admin/riders').then((r) => { setRiders(r); setPick(r.find((x) => !x.busy)?.id || '') }).catch(() => setRiders([])) }, [])
+  if (!riders) return null
+  if (riders.length === 0) return <p className="ad-od-note">No rider yet? Add your own delivery staff under <b>Staff</b> (role: Delivery) to deliver it yourselves with live tracking.</p>
+  const free = riders.filter((r) => !r.busy)
+  const send = async () => {
+    setBusy(true); setError('')
+    try { onUpdated(await api.post(`/api/admin/orders/${order.id}/assign`, { rider_id: pick })) }
+    catch (e) { setError(e.message) } finally { setBusy(false) }
+  }
+  return (
+    <div className="ad-send-staff">
+      <p className="ad-od-h">Or send with our staff</p>
+      {free.length === 0 ? <p className="ad-muted ad-small">All your delivery staff are out on deliveries.</p> : (
+        <div className="ad-send-row">
+          <select className="ad-input" value={pick} onChange={(e) => setPick(e.target.value)} aria-label="Delivery staff">
+            {free.map((r) => <option key={r.id} value={r.id}>{r.name}{r.is_online ? ' · online' : ''}</option>)}
+          </select>
+          <button className="ad-btn" disabled={busy || !pick} onClick={send}>{busy ? 'Sending…' : 'Send'}</button>
+        </div>
+      )}
+      <ErrorNote>{error}</ErrorNote>
+    </div>
+  )
+}
+
 function OrderDetail({ order, onClose, onUpdated }) {
   const [busy, setBusy]   = useState('')
   const [error, setError] = useState('')
@@ -62,7 +93,7 @@ function OrderDetail({ order, onClose, onUpdated }) {
             <p className="ad-od-h">Delivery partner</p>
             {rider ? (
               <>
-                <b>{rider.name}</b>
+                <b>{rider.name}{rider.in_house && <span className="ad-ex-tag">OUR STAFF</span>}</b>
                 {rider.phone && <a className="ad-od-line" href={`tel:+91${rider.phone}`}><Phone size={14} /> +91 {rider.phone}</a>}
                 <p className="ad-od-line"><Bike size={14} /> {rider.vehicle?.number || rider.vehicle?.type || 'Rider'}
                   {' · '}{rider.picked_up_at ? 'Picked up' : rider.reached_store_at ? 'At your store' : 'Coming to your store'}</p>
@@ -70,7 +101,10 @@ function OrderDetail({ order, onClose, onUpdated }) {
                 {!rider.picked_up_at && order.status !== 'cancelled' && <p className="ad-od-note">Pack the order; the rider marks pickup and delivery from the rider app.</p>}
               </>
             ) : ['confirmed', 'packed'].includes(order.status) ? (
-              <p className="ad-muted">Looking for a nearby rider… Riders who are online see this order now. Wait for a rider to accept before it leaves the store.</p>
+              <>
+                <p className="ad-muted">Looking for a nearby rider… Riders who are online see this order now.</p>
+                <SendWithStaff order={order} onUpdated={onUpdated} />
+              </>
             ) : (
               <p className="ad-muted">{order.status === 'placed' ? 'Accept the order to send it to riders.' : 'No rider assigned.'}</p>
             )}

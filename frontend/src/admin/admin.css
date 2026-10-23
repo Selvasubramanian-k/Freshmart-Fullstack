@@ -310,3 +310,6 @@ textarea.ad-input { resize: vertical; }
 .ad-req-photos { display: flex; gap: 8px; flex-wrap: wrap; }
 .ad-req-photos img { width: 84px; height: 84px; object-fit: cover; border-radius: 10px; border: 1px solid #e5e7eb; display: block; }
 .ad-ex-tag { margin-left: 6px; padding: 2px 7px; border-radius: 999px; background: #fff3e6; color: #9a4a00; font-size: 10.5px; font-weight: 800; font-family: 'Montserrat', sans-serif; }
+.ad-send-staff { margin-top: 10px; padding-top: 10px; border-top: 1px dashed #e5e7eb; display: flex; flex-direction: column; gap: 6px; }
+.ad-send-row { display: flex; gap: 8px; }
+.ad-send-row .ad-input { flex: 1; min-width: 0; }

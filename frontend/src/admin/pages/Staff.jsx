@@ -3,9 +3,9 @@ import { Plus, Pencil, Trash2, Users } from 'lucide-react'
 import { api } from '../../shared/api/client.js'
 import { Empty, ErrorNote, Modal, PageHead } from '../components/ui.jsx'
 
-const ROLES = { manager: 'Manager', picker: 'Picker', packer: 'Packer', cashier: 'Cashier' }
+const ROLES = { manager: 'Manager', picker: 'Picker', packer: 'Packer', cashier: 'Cashier', delivery: 'Delivery (own rider)' }
 const SHIFTS = ['Morning', 'Evening', 'Night', 'Full day']
-const EMPTY = { name: '', phone: '', email: '', role: 'picker', shift: 'Morning' }
+const EMPTY = { name: '', phone: '', email: '', role: 'picker', shift: 'Morning', password: '', vehicle_number: '' }
 
 function StaffForm({ initial, onSaved, onClose }) {
   const editing = Boolean(initial?.id)
@@ -18,7 +18,11 @@ function StaffForm({ initial, onSaved, onClose }) {
     e.preventDefault()
     if (f.name.trim().length < 2) return setError('Enter the staff member\'s name.')
     if (!/^[6-9]\d{9}$/.test(f.phone)) return setError('Enter a valid 10-digit mobile number.')
+    const rider = f.role === 'delivery' && !editing
+    if (rider && !/^\S+@\S+\.\S+$/.test(f.email.trim())) return setError('Delivery staff log in with an email. Enter their email.')
+    if (rider && f.password.length < 6) return setError('Set a password of at least 6 characters for the delivery app.')
     const body = { name: f.name.trim(), phone: f.phone, email: f.email.trim() || null, role: f.role, shift: f.shift }
+    if (rider) Object.assign(body, { password: f.password, vehicle_number: f.vehicle_number.trim() || null })
     setBusy(true); setError('')
     try {
       onSaved(editing ? await api.put(`/api/admin/staff/${initial.id}`, body) : await api.post('/api/admin/staff', body), editing)
@@ -30,10 +34,17 @@ function StaffForm({ initial, onSaved, onClose }) {
       <form className="ad-form" onSubmit={submit} noValidate>
         <label className="ad-field full">Name<input className="ad-input" value={f.name} onChange={set('name')} autoFocus /></label>
         <label className="ad-field">Mobile<input className="ad-input" inputMode="numeric" value={f.phone} onChange={set('phone')} /></label>
-        <label className="ad-field">Email (optional)<input className="ad-input" type="email" value={f.email} onChange={set('email')} /></label>
+        <label className="ad-field">{f.role === 'delivery' ? 'Email (their login)' : 'Email (optional)'}<input className="ad-input" type="email" value={f.email} onChange={set('email')} disabled={editing && f.role === 'delivery'} /></label>
         <label className="ad-field">Role
-          <select className="ad-input" value={f.role} onChange={set('role')}>{Object.entries(ROLES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
+          <select className="ad-input" value={f.role} onChange={set('role')} disabled={editing && initial.role === 'delivery'}>{Object.entries(ROLES).filter(([k]) => !editing || initial.role === 'delivery' || k !== 'delivery').map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
         </label>
+        {f.role === 'delivery' && !editing && (
+          <>
+            <label className="ad-field">Password for the delivery app<input className="ad-input" type="password" autoComplete="new-password" value={f.password} onChange={set('password')} /></label>
+            <label className="ad-field">Vehicle number (optional)<input className="ad-input" value={f.vehicle_number} onChange={set('vehicle_number')} placeholder="TN09AB1234" /></label>
+            <p className="ad-od-note full">They log in to the FreshMart delivery app with this email and password. They only get your store’s orders, and customers see them live on the map.</p>
+          </>
+        )}
         <label className="ad-field">Shift
           <select className="ad-input" value={f.shift} onChange={set('shift')}>{SHIFTS.map(s => <option key={s}>{s}</option>)}</select>
         </label>
@@ -68,7 +79,7 @@ export default function Staff() {
 
   return (
     <>
-      <PageHead title="Staff" sub="Pickers, packers and managers working at your store. (Staff logins come with the Picker role, phase 2.)">
+      <PageHead title="Staff" sub="People working at your store. Delivery staff get a login for the delivery app so customers can track them live.">
         <button className="ad-btn" onClick={() => setEditing({})}><Plus size={16} /> Add staff</button>
       </PageHead>
       <ErrorNote>{error}</ErrorNote>
@@ -83,7 +94,7 @@ export default function Staff() {
                 {items.map(s => (
                   <tr key={s.id} className={s.is_active ? '' : 'dim'}>
                     <td><b>{s.name}</b></td>
-                    <td>{ROLES[s.role] || s.role}</td>
+                    <td>{ROLES[s.role] || s.role}{s.user_id && <span className="ad-ex-tag">APP LOGIN</span>}</td>
                     <td>{s.shift}</td>
                     <td><span>+91 {s.phone}</span>{s.email && <span className="ad-muted ad-block">{s.email}</span>}</td>
                     <td><button className={`ad-mini-switch ${s.is_active ? 'on' : ''}`} role="switch" aria-checked={s.is_active} aria-label={`Active: ${s.name}`} onClick={() => toggle(s)}><span /></button></td>

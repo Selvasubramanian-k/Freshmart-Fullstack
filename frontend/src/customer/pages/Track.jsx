@@ -191,7 +191,7 @@ export default function Track() {
       <div className="tr-map">
         <LiveMap
           rider={live && p ? rider : null}
-          riderLabel={p?.name?.split(' ')[0]}
+          riderLabel={p ? `${p.name.split(' ')[0]}${p.in_house ? ' · FreshMart staff' : ''}` : undefined}
           places={places}
           route={dotted ? curve : live ? route?.coords : null}
           routeStyle={dotted ? 'dotted' : 'road'}
@@ -251,7 +251,7 @@ export default function Track() {
                 <span className="tr-av">{p.name.charAt(0)}</span>
                 <div>
                   <b>{p.name}</b>
-                  <small>{VEHICLE[p.vehicle?.type] || 'Rider'}{p.vehicle?.number ? ` · ${p.vehicle.number}` : ''}{leftKm != null ? ` · ${fmtKm(leftKm)} away` : ''}</small>
+                  <small>{p.in_house ? `${t.store?.name || 'Store'} staff` : VEHICLE[p.vehicle?.type] || 'Rider'}{p.vehicle?.number ? ` · ${p.vehicle.number}` : ''}{leftKm != null ? ` · ${fmtKm(leftKm)} away` : ''}</small>
                 </div>
                 {p.phone && <a href={`tel:+91${p.phone}`} aria-label={`Call ${p.name}`}><Phone size={18} /></a>}
               </div>

@@ -10,6 +10,7 @@ class StaffRole(str, Enum):
     PICKER = "picker"
     PACKER = "packer"
     CASHIER = "cashier"
+    DELIVERY = "delivery"   # store's own delivery staff: gets a login for the delivery partner app
 
 
 class StaffCreate(BaseModel):
@@ -18,6 +19,9 @@ class StaffCreate(BaseModel):
     email: EmailStr | None = None
     role: StaffRole
     shift: str = Field(default="Morning", max_length=30)
+    # only for role=delivery (login for the delivery partner app)
+    password: str | None = Field(default=None, min_length=6, max_length=64)
+    vehicle_number: str | None = Field(default=None, max_length=20)
 
 
 class StaffUpdate(BaseModel):

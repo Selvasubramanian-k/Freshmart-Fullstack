@@ -70,9 +70,10 @@ async def available_tasks(rider: dict) -> list[dict]:
     doc = await _rider_doc(rider)
     if not doc.get("is_online") or doc.get("active_order_id"):
         return []
-    orders = await db.orders.find(
-        {"status": {"$in": PICKABLE_STATUSES}, "partner": None}
-    ).sort("created_at", 1).to_list(20)
+    query: dict = {"status": {"$in": PICKABLE_STATUSES}, "partner": None}
+    if doc.get("in_house"):  # store staff only see their own store's orders
+        query["store_id"] = doc.get("store_id")
+    orders = await db.orders.find(query).sort("created_at", 1).to_list(20)
     store_ids = list({o["store_id"] for o in orders})
     stores = {s["_id"]: s for s in await db.stores.find({"_id": {"$in": store_ids}, "is_open": True}).to_list(None)}
 
@@ -106,15 +107,11 @@ async def accept_task(rider: dict, order_id: str) -> dict:
     if doc.get("active_order_id"):
         raise HTTPException(status.HTTP_409_CONFLICT, "You already have an active delivery")
 
-    partner = {
-        "id": str(doc["_id"]),
-        "name": doc["name"],
-        "phone": doc.get("phone"),
-        "vehicle": doc.get("vehicle"),
-        "accepted_at": now_utc(),
-        "reached_store_at": None,
-        "picked_up_at": None,
-    }
+    if doc.get("in_house"):
+        o = await db.orders.find_one({"_id": to_object_id(order_id, "order id")}, {"store_id": 1})
+        if o and o["store_id"] != doc.get("store_id"):
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "You deliver only for your own store")
+    partner = _partner_of(doc)
     order = await db.orders.find_one_and_update(
         {"_id": to_object_id(order_id, "order id"), "partner": None, "status": {"$in": PICKABLE_STATUSES}},
         {"$set": {"partner": partner, "rider_location": doc.get("location"), "updated_at": now_utc()}},
@@ -124,6 +121,55 @@ async def accept_task(rider: dict, order_id: str) -> dict:
         raise HTTPException(status.HTTP_409_CONFLICT, "Another partner already took this order")
     await db.users.update_one({"_id": doc["_id"]}, {"$set": {"active_order_id": order["_id"]}})
     return await current_task(rider)
+
+
+def _partner_of(doc: dict, by_store: bool = False) -> dict:
+    return {
+        "id": str(doc["_id"]),
+        "name": doc["name"],
+        "phone": doc.get("phone"),
+        "vehicle": doc.get("vehicle"),
+        "in_house": bool(doc.get("in_house")),
+        "assigned_by_store": by_store,
+        "accepted_at": now_utc(),
+        "reached_store_at": None,
+        "picked_up_at": None,
+    }
+
+
+# ---------------- store admin: its own delivery staff ----------------
+async def store_riders(admin: dict) -> list[dict]:
+    from app.controllers.store_controller import get_admin_store_doc
+    store = await get_admin_store_doc(admin)
+    docs = await get_db().users.find(
+        {"role": "delivery", "in_house": True, "store_id": store["_id"], "is_active": {"$ne": False}}
+    ).sort("name", 1).to_list(None)
+    return [{"id": str(d["_id"]), "name": d["name"], "phone": d.get("phone"), "is_online": bool(d.get("is_online")),
+             "busy": bool(d.get("active_order_id")), "vehicle": d.get("vehicle")} for d in docs]
+
+
+async def assign_to_staff(admin: dict, order_id: str, rider_id: str) -> dict:
+    """Store sends an order with one of its own delivery staff. They get it in the
+    delivery app as their current task and share live location like any rider."""
+    from app.controllers.store_controller import get_admin_store_doc
+    store = await get_admin_store_doc(admin)
+    db = get_db()
+    rider = await db.users.find_one({"_id": to_object_id(rider_id, "staff id"), "role": "delivery",
+                                     "in_house": True, "store_id": store["_id"], "is_active": {"$ne": False}})
+    if not rider:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Delivery staff not found")
+    if rider.get("active_order_id"):
+        raise HTTPException(status.HTTP_409_CONFLICT, f"{rider['name']} is already out on a delivery")
+    order = await db.orders.find_one_and_update(
+        {"_id": to_object_id(order_id, "order id"), "store_id": store["_id"], "partner": None,
+         "status": {"$in": PICKABLE_STATUSES}},
+        {"$set": {"partner": _partner_of(rider, by_store=True), "rider_location": rider.get("location"), "updated_at": now_utc()}},
+        return_document=ReturnDocument.AFTER,
+    )
+    if not order:
+        raise HTTPException(status.HTTP_409_CONFLICT, "This order already has a delivery partner or is not ready")
+    await db.users.update_one({"_id": rider["_id"]}, {"$set": {"active_order_id": order["_id"], "is_online": True}})
+    return hide_code(serialize(order))
 
 
 # ---------------- the active delivery ----------------
@@ -261,7 +307,7 @@ async def track_for_customer(customer: dict, order_id: str) -> dict:
         "store": _store_point(store),
         "drop": order["address"],
         "partner": {"name": p["name"], "phone": p.get("phone"), "vehicle": p.get("vehicle"),
-                    "picked_up_at": p.get("picked_up_at")} if p else None,
+                    "in_house": bool(p.get("in_house")), "picked_up_at": p.get("picked_up_at")} if p else None,
         "rider_location": order.get("rider_location") if order["status"] in ("confirmed", "packed", "out_for_delivery") else None,
         "bill": order["bill"],
         "payment": {"method": order["payment"]["method"], "status": order["payment"]["status"]},
