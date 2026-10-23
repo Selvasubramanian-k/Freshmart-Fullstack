@@ -1,5 +1,6 @@
 """Shop Owner / Store Admin APIs."""
 import secrets
+from datetime import datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
@@ -88,8 +89,14 @@ async def upload_image(file: UploadFile = File(...)):
 
 # ---------- Orders ----------
 @router.get("/orders")
-async def list_orders(status_filter: str | None = None, q: str | None = None, user: dict = Depends(require_admin)):
-    return await order_controller.store_orders(user, status_filter, q)
+async def list_orders(
+    status_filter: str | None = None, q: str | None = None,
+    date_from: datetime | None = None, date_to: datetime | None = None,
+    active: bool = False, user: dict = Depends(require_admin),
+):
+    """date_from / date_to: ISO times (the browser sends its local day start/end).
+    active=true: only orders still being handled (placed ... out_for_delivery)."""
+    return await order_controller.store_orders(user, status_filter, q, date_from, date_to, active)
 
 
 @router.patch("/orders/{order_id}/status")

@@ -201,17 +201,22 @@ async def _apply_cancel(order: dict, note: str) -> None:
 
 
 # ======================= Store admin =======================
-async def store_orders(admin: dict, status_filter: str | None = None, q: str | None = None) -> list[dict]:
+async def store_orders(admin: dict, status_filter: str | None = None, q: str | None = None,
+                       date_from=None, date_to=None, active: bool = False) -> list[dict]:
     store = await get_admin_store_doc(admin)
     query: dict = {"store_id": store["_id"]}
     if status_filter:
         query["status"] = status_filter
+    if active:
+        query["status"] = {"$in": ["placed", "confirmed", "packed", "out_for_delivery"]}
+    if date_from or date_to:
+        query["created_at"] = {k: v for k, v in (("$gte", date_from), ("$lt", date_to)) if v}
     if q:
         query["$or"] = [
             {"order_number": {"$regex": re.escape(q.upper())}},
             {"customer_name": {"$regex": re.escape(q), "$options": "i"}},
         ]
-    docs = await get_db().orders.find(query).sort("created_at", -1).to_list(500)
+    docs = await get_db().orders.find(query).sort("created_at", -1).to_list(2000)
     return hide_code(serialize(docs))
 
 

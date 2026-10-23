@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Bike, ClipboardList, RefreshCw, Search, MapPin, Phone, CreditCard, Clock } from 'lucide-react'
+import { Bike, ClipboardList, Download, RefreshCw, Search, MapPin, Phone, CreditCard, Clock } from 'lucide-react'
 import { api } from '../../shared/api/client.js'
 import { resolveImage } from '../../shared/utils/images.js'
 import { Empty, ErrorNote, Modal, PageHead, StatusBadge } from '../components/ui.jsx'
@@ -44,6 +44,46 @@ function SendWithStaff({ order, onUpdated }) {
       <ErrorNote>{error}</ErrorNote>
     </div>
   )
+}
+
+// ---------- date range (browser's local days; week starts Monday) ----------
+const RANGES = [
+  { id: 'today', label: 'Today' }, { id: 'yesterday', label: 'Yesterday' }, { id: 'week', label: 'This week' },
+  { id: 'month', label: 'This month' }, { id: 'all', label: 'All time' }, { id: 'custom', label: 'Pick dates' },
+]
+const dayStart = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate())
+const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n)
+const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+const nice = (d, opt = { weekday: 'short', day: 'numeric', month: 'short' }) => d.toLocaleDateString('en-IN', opt)
+function rangeBounds(id, from, to) {
+  const today = dayStart(new Date())
+  if (id === 'today') return { start: today, end: addDays(today, 1), text: `Today · ${nice(today)}` }
+  if (id === 'yesterday') { const y = addDays(today, -1); return { start: y, end: today, text: `Yesterday · ${nice(y)}` } }
+  if (id === 'week') {
+    const mon = addDays(today, -((today.getDay() + 6) % 7))
+    return { start: mon, end: addDays(today, 1), text: `This week · ${nice(mon)} – ${nice(today)}` }
+  }
+  if (id === 'month') {
+    const first = new Date(today.getFullYear(), today.getMonth(), 1)
+    return { start: first, end: addDays(today, 1), text: `This month · ${nice(first, { day: 'numeric', month: 'short' })} – ${nice(today, { day: 'numeric', month: 'short' })}` }
+  }
+  if (id === 'custom' && from && to) {
+    const a = new Date(`${from}T00:00`), b = new Date(`${to}T00:00`)
+    const [s, e] = a <= b ? [a, b] : [b, a]
+    return { start: s, end: addDays(e, 1), text: `${nice(s, { day: 'numeric', month: 'short', year: 'numeric' })} – ${nice(e, { day: 'numeric', month: 'short', year: 'numeric' })}` }
+  }
+  return { start: null, end: null, text: 'All orders' }
+}
+
+function downloadCsv(rows, name) {
+  const head = ['Order', 'Placed', 'Customer', 'Phone', 'Items', 'Item value', 'Delivery fee', 'Total', 'Payment', 'Payment status', 'Status']
+  const esc = (v) => `"${String(v ?? '').replaceAll('"', '""')}"`
+  const lines = rows.map((o) => [o.order_number, fmtDateTime(o.created_at), o.customer_name, o.customer_phone, o.items.reduce((n, i) => n + i.quantity, 0),
+    o.bill.subtotal, o.bill.delivery_fee, o.bill.total, PAY_NAMES[o.payment.method] || o.payment.method, o.payment.status, ORDER_STATUS[o.status]?.label || o.status].map(esc).join(','))
+  const blob = new Blob([[head.join(','), ...lines].join('\n')], { type: 'text/csv' })
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob); a.download = name; a.click()
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000)
 }
 
 function OrderDetail({ order, onClose, onUpdated }) {
@@ -160,9 +200,23 @@ export default function Orders() {
   const [error, setError]   = useState('')
   const [tab, setTab]       = useState('active')
   const [q, setQ]           = useState('')
+  const [range, setRange]   = useState('week')
+  const [from, setFrom]     = useState(() => ymd(addDays(new Date(), -7)))
+  const [to, setTo]         = useState(() => ymd(new Date()))
+  const [olderActive, setOlderActive] = useState(0)
   const openId              = params.get('open')
+  const bounds = useMemo(() => rangeBounds(range, from, to), [range, from, to])
 
-  const load = useCallback(() => api.get('/api/admin/orders').then(setOrders).catch(e => setError(e.message)), [])
+  const load = useCallback(() => {
+    const qs = bounds.start ? `?date_from=${bounds.start.toISOString()}&date_to=${bounds.end.toISOString()}` : ''
+    api.get(`/api/admin/orders${qs}`).then(setOrders).catch(e => setError(e.message))
+    // orders still being handled but placed before this range -> don't let them hide
+    if (bounds.start) {
+      api.get('/api/admin/orders?active=true')
+        .then((xs) => setOlderActive(xs.filter((o) => new Date(o.created_at.endsWith('Z') || o.created_at.includes('+') ? o.created_at : `${o.created_at}Z`) < bounds.start).length))
+        .catch(() => {})
+    }
+  }, [bounds])
   // New orders / rider pickup -> list auto update (every 8s + when the tab gets focus)
   useEffect(() => {
     load()
@@ -179,15 +233,50 @@ export default function Orders() {
       (!needle || o.order_number.toLowerCase().includes(needle) || o.customer_name.toLowerCase().includes(needle)))
   }, [orders, tab, q])
 
+  // summary for the chosen dates (sales = item value of delivered orders)
+  const summary = useMemo(() => {
+    const xs = orders || []
+    const del = xs.filter((o) => o.status === 'delivered' && !o.is_exchange)  // free exchanges aren't sales
+    const sales = del.reduce((a, o) => a + (o.bill.subtotal || 0), 0)
+    return { count: xs.length, delivered: del.length, sales, avg: del.length ? sales / del.length : 0, cancelled: xs.filter((o) => o.status === 'cancelled').length }
+  }, [orders])
+
   const open = orders?.find(o => o.id === openId)
   const setOpen = (id) => setParams(id ? { open: id } : {})
   const onUpdated = (o) => setOrders(xs => xs.map(x => x.id === o.id ? o : x))
 
   return (
     <>
-      <PageHead title="Orders" sub="Accept, pack and dispatch orders from your store.">
+      <PageHead title="Orders" sub={bounds.text}>
+        <button className="ad-btn ghost" disabled={!list.length} onClick={() => downloadCsv(list, `freshmart-orders-${bounds.start ? ymd(bounds.start) : 'all'}.csv`)}><Download size={16} /> Download CSV</button>
         <button className="ad-btn ghost" onClick={load}><RefreshCw size={16} /> Refresh</button>
       </PageHead>
+
+      <div className="ad-range" role="group" aria-label="Date range">
+        {RANGES.map((r) => (
+          <button key={r.id} type="button" className={`ad-chip ${range === r.id ? 'on' : ''}`} aria-pressed={range === r.id} onClick={() => setRange(r.id)}>{r.label}</button>
+        ))}
+        {range === 'custom' && (
+          <div className="ad-range-dates">
+            <label>From <input type="date" className="ad-input" value={from} max={to} onChange={(e) => setFrom(e.target.value)} /></label>
+            <label>To <input type="date" className="ad-input" value={to} min={from} max={ymd(new Date())} onChange={(e) => setTo(e.target.value)} /></label>
+          </div>
+        )}
+      </div>
+
+      <div className="ad-sum">
+        <div className="ad-sum-card"><span>Sales</span><b className="good">{rs(summary.sales)}</b><small>item value · delivered orders</small></div>
+        <div className="ad-sum-card"><span>Orders</span><b>{summary.count}</b><small>{summary.delivered} delivered</small></div>
+        <div className="ad-sum-card"><span>Average order</span><b>{rs(summary.avg)}</b><small>per delivered order</small></div>
+        <div className="ad-sum-card"><span>Cancelled</span><b className="bad">{summary.cancelled}</b><small>orders</small></div>
+      </div>
+
+      {bounds.start && olderActive > 0 && (
+        <p className="ad-older">
+          {olderActive} active order{olderActive > 1 ? 's are' : ' is'} from before this range.
+          <button type="button" onClick={() => { setRange('all'); setTab('active') }}>Show {olderActive > 1 ? 'them' : 'it'}</button>
+        </p>
+      )}
 
       <div className="ad-tabs" role="tablist">
         {TABS.map(t => (
@@ -202,7 +291,7 @@ export default function Orders() {
 
       <ErrorNote>{error}</ErrorNote>
       {!orders ? <p className="ad-muted">Loading orders…</p> : list.length === 0 ? (
-        <Empty icon={ClipboardList} title="No orders here" text="Orders in this state will show up here." />
+        <Empty icon={ClipboardList} title="No orders here" text="No orders in this state for these dates. Try another date range." />
       ) : (
         <div className="ad-card flush">
           <div className="ad-table-wrap">

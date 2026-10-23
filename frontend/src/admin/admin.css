@@ -313,3 +313,21 @@ textarea.ad-input { resize: vertical; }
 .ad-send-staff { margin-top: 10px; padding-top: 10px; border-top: 1px dashed #e5e7eb; display: flex; flex-direction: column; gap: 6px; }
 .ad-send-row { display: flex; gap: 8px; }
 .ad-send-row .ad-input { flex: 1; min-width: 0; }
+
+/* orders: date range + summary */
+.ad-range { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.ad-chip { min-height: 40px; padding: 0 16px; border-radius: 999px; border: 1.5px solid var(--border); background: #fff; font-family: inherit; font-weight: 700; font-size: 13.5px; color: var(--text); cursor: pointer; }
+.ad-chip.on { background: var(--ad-green); border-color: var(--ad-green); color: #fff; }
+.ad-range-dates { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ad-range-dates label { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; }
+.ad-range-dates .ad-input { height: 40px; padding: 0 10px; width: auto; }
+.ad-sum { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.ad-sum-card { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 2px; }
+.ad-sum-card span { font-size: 12.5px; font-weight: 700; color: var(--muted); }
+.ad-sum-card b { font-size: 24px; }
+.ad-sum-card b.good { color: var(--ad-green); }
+.ad-sum-card b.bad { color: var(--ad-red); }
+.ad-sum-card small { font-size: 12px; color: var(--muted); }
+.ad-older { margin: 0; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--ad-amber-bg); color: #7a4a00; border-radius: 12px; padding: 10px 14px; font-size: 13.5px; font-weight: 600; }
+.ad-older button { border: 0; background: #fff; border-radius: 8px; min-height: 34px; padding: 0 12px; font-family: inherit; font-weight: 800; font-size: 13px; color: #7a4a00; cursor: pointer; }
+@media (max-width: 900px) { .ad-sum { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
