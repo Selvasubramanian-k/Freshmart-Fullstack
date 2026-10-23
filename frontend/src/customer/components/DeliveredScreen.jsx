@@ -41,15 +41,19 @@ export default function DeliveredScreen({ order, onDone }) {
       </div>
 
       <div className="dv-tick"><Check size={64} strokeWidth={3} /></div>
-      <h1 id="dv-title">Order delivered!</h1>
+      <h1 id="dv-title">{order.is_exchange ? 'Exchange done!' : 'Order delivered!'}</h1>
       <p className="dv-sub">
-        {rider ? `${rider} handed over` : 'We delivered'} order #{order.order_number}{time ? ` at ${time}` : ''}. Enjoy your groceries.
+        {order.is_exchange
+          ? `${rider ? `${rider} brought` : 'We delivered'} your fresh item${time ? ` at ${time}` : ''} and took the old one back.`
+          : `${rider ? `${rider} handed over` : 'We delivered'} order #${order.order_number}${time ? ` at ${time}` : ''}. Enjoy your groceries.`}
       </p>
 
       <div className="dv-stats">
         {mins && <div><b>{mins} min</b><span>Delivery time</span></div>}
         <div><b>{order.items_count}</b><span>Items</span></div>
-        <div><b>{rs(order.bill?.total)}</b><span>{cod ? 'Paid (cash)' : 'Paid online'}</span></div>
+        {order.is_exchange
+          ? <div><b>Free</b><span>Exchange</span></div>
+          : <div><b>{rs(order.bill?.total)}</b><span>{cod ? 'Paid (cash)' : 'Paid online'}</span></div>}
       </div>
 
       <div className="dv-rate">

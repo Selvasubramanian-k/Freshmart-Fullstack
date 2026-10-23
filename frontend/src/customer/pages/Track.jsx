@@ -161,6 +161,16 @@ export default function Track() {
   }
 
   const card = t ? statusCard(t) : { kicker: '', title: 'Loading your order…', sub: '' }
+  const ex = !!t?.is_exchange
+  const exItems = ex ? t.items.map((i) => i.name).join(', ') : ''
+  if (ex && card.kicker && t.status !== 'cancelled') {
+    // a free replacement: same delivery flow, exchange wording
+    const rider1 = t.partner?.name?.split(' ')[0]
+    card.kicker = `EXCHANGE · ${card.kicker}`
+    if (['placed', 'confirmed'].includes(t.status)) { card.title = 'Getting your fresh item'; card.sub = rider1 ? `${rider1} will bring a fresh ${exItems} and take the old one back` : `Finding a delivery partner to bring a fresh ${exItems}` }
+    if (t.status === 'packed') { card.title = rider1 ? `${rider1} is picking it up` : 'Fresh item packed'; card.sub = 'Keep the old item ready. The rider takes it back.' }
+    if (t.status === 'out_for_delivery') { card.title = 'Fresh item on the way'; card.sub = rider1 ? `${rider1} is bringing your fresh ${exItems}. Keep the old one ready.` : 'Keep the old item ready.' }
+  }
   const stage = STAGE[t?.status] ?? -1
   const p = t?.partner
   const cod = t?.payment?.method === 'cod'
@@ -168,7 +178,7 @@ export default function Track() {
 
   const titleBlock = (
     <div className="tr-title">
-      <b>{t?.store?.name || 'Your order'}</b>
+      <b>{ex ? `Exchange for #${t.exchange_for}` : t?.store?.name || 'Your order'}</b>
       {t && <span>{wide ? `#${t.order_number} · ` : ''}{hhmm(t.created_at)} · {t.items_count} item{t.items_count === 1 ? '' : 's'}</span>}
     </div>
   )
@@ -221,6 +231,14 @@ export default function Track() {
           )}
         </section>
 
+        {ex && live && (
+          <div className="tr-swap">
+            <div><small>YOU GET</small><b>Fresh {exItems}</b></div>
+            <span aria-hidden="true"><RefreshCw size={16} /></span>
+            <div><small className="bad">RIDER TAKES</small><b>Your old item</b><em>keep it ready</em></div>
+          </div>
+        )}
+
         {/* OTP always on top - no need to open the sheet or scroll */}
         {t?.delivery_code && live && stage >= 1 && (
           <div className="tr-code"><ShieldCheck size={20} /><span>Share this code at your door</span><b>{t.delivery_code.split('').join(' ')}</b></div>
@@ -257,10 +275,10 @@ export default function Track() {
                     <div><b>{t.drop?.label || 'Home'}</b><span>{t.drop?.text}</span></div>
                   </div>
                 </div>
-                {t.instructions?.length > 0 && <div className="tr-chips">{t.instructions.map((x) => <span key={x}>{x}</span>)}</div>}
+                {t.instructions?.filter((x) => !x.startsWith('Exchange:')).length > 0 && <div className="tr-chips">{t.instructions.filter((x) => !x.startsWith('Exchange:')).map((x) => <span key={x}>{x}</span>)}</div>}
                 <div className="tr-items">
                   {t.items?.map((it, i) => <div key={i}>{it.name} <small>{it.unit} × {it.quantity}</small></div>)}
-                  <div className="tr-total"><span>#{t.order_number}</span><b>{rs(t.bill?.total)} · {cod ? 'Cash' : 'Paid online'}</b></div>
+                  <div className="tr-total"><span>#{t.order_number}</span><b>{ex ? 'Free exchange' : `${rs(t.bill?.total)} · ${cod ? 'Cash' : 'Paid online'}`}</b></div>
                 </div>
               </div>
             )}

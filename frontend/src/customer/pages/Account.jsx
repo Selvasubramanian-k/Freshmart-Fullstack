@@ -30,7 +30,7 @@ const ISSUE_LABEL = {
   return: 'Return items', refund: 'Refund', damaged: 'Damaged item', missing_item: 'Missing item', wrong_item: 'Wrong item',
   quality: 'Quality issue', expired: 'Expired', late_delivery: 'Late delivery', other: 'Something else',
 }
-const PAY_NAMES = { gpay: 'GPay', phonepe: 'PhonePe', paytm: 'Paytm', bhim: 'BHIM', card: 'Card', nb: 'Net Banking', cod: 'Cash on Delivery' }
+const PAY_NAMES = { exchange: 'Free exchange', gpay: 'GPay', phonepe: 'PhonePe', paytm: 'Paytm', bhim: 'BHIM', card: 'Card', nb: 'Net Banking', cod: 'Cash on Delivery' }
 
 const fmtDate = (iso) => {
   const d = new Date(iso.endsWith('Z') || iso.includes('+') ? iso : iso + 'Z')
@@ -53,7 +53,7 @@ function OrderCard({ order, request, onOrderAgain, onChanged }) {
 
   const canCancel = ['placed', 'confirmed'].includes(o.status)
   const reqOpen   = request && ['open', 'in_progress'].includes(request.status)
-  const canIssue  = !['cancelled', 'returned', 'return_requested'].includes(o.status) && !reqOpen
+  const canIssue  = !['cancelled', 'returned', 'return_requested'].includes(o.status) && !reqOpen && !o.is_exchange
   const types     = ISSUE_TYPES
   const sum       = request ? requestSummary(request) : null
   // delivered -> refund / exchange page; still on the way -> short note to the store
@@ -89,7 +89,7 @@ function OrderCard({ order, request, onOrderAgain, onChanged }) {
             {STATUS_TEXT[o.status] || o.status}
             {o.status === 'delivered' && <span className="acc-tick"><Icon name="check" /></span>}
           </div>
-          <div className="acc-order-date">#{o.order_number} · {o.store_name} · {fmtDate(o.created_at)}</div>
+          <div className="acc-order-date">{o.is_exchange && <span className="acc-ex-tag">Exchange for #{o.exchange_for}</span>}#{o.order_number} · {o.store_name} · {fmtDate(o.created_at)}</div>
         </div>
         <div className="acc-order-amt">{rs(o.bill.total)} <Icon name="chevron-right" /></div>
       </button>

@@ -3,7 +3,7 @@
 //   4 store reviewing  5 approved  6 money back / new item delivered   (store moves these)
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Camera, Check, MessageCircle, Minus, Plus, Repeat, RotateCcw, X } from 'lucide-react'
+import { ArrowLeft, Camera, Check, MapPin, MessageCircle, Minus, Plus, Repeat, RotateCcw, X } from 'lucide-react'
 import { api } from '../../shared/api/client.js'
 import { resolveImage } from '../../shared/utils/images.js'
 import { getProduct } from '../data/products.js'
@@ -34,6 +34,7 @@ export default function Issue() {
 
   const [order, setOrder] = useState(null)
   const [req, setReq] = useState(null)        // the request once it is sent
+  const [exOrder, setExOrder] = useState(null) // replacement order the rider delivers (exchange)
   const [error, setError] = useState('')
 
   // form
@@ -54,7 +55,9 @@ export default function Issue() {
       setOrder(o)
       const wanted = params.get('c')
       const mine = list.filter((c) => c.order_id === orderId && c.resolution)
-      setReq(wanted ? mine.find((c) => c.id === wanted) || null : mine.find((c) => c.status !== 'cancelled') || null)
+      const r = wanted ? mine.find((c) => c.id === wanted) || null : mine.find((c) => c.status !== 'cancelled') || null
+      setReq(r)
+      if (r?.exchange_order_id) setExOrder(await api.get(`/api/customer/orders/${r.exchange_order_id}`).catch(() => null))
       setError('')
     } catch (e) { setError(e.message) }
   }, [orderId, params])
@@ -146,6 +149,11 @@ export default function Issue() {
   const cur = !sent ? step - 1 : st === 'open' ? 3 : st === 'in_progress' ? 5 : 6
   const bad = st === 'rejected' || st === 'cancelled'
 
+  const riderName = exOrder?.partner?.name?.split(' ')[0]
+  const exLine = !exOrder ? 'Our rider brings a fresh one and collects the old item'
+    : exOrder.status === 'out_for_delivery' ? `${riderName || 'Rider'} is on the way with your fresh item`
+    : exOrder.partner ? `${riderName} is picking up your fresh item at the store`
+    : 'Finding a delivery partner near the store'
   const steps = [
     { title: 'Items with a problem', note: reqItems.length ? reqItems.map((i) => `${i.name}${i.quantity > 1 ? ` × ${i.quantity}` : ''}`).join(', ') + ` · ${rs(reqAmount)}` : 'Pick one or more' },
     { title: 'What went wrong', note: `${REASON_LABEL[sent ? req.type : reason] || 'Problem'}${(sent ? req.photos : photos)?.length ? ` · ${(sent ? req.photos : photos).length} photo${(sent ? req.photos : photos).length > 1 ? 's' : ''}` : ''}` },
@@ -155,13 +163,13 @@ export default function Issue() {
     { title: st === 'rejected' ? 'Not approved' : ex ? 'Exchange approved' : 'Refund approved',
       note: H.approved ? fmtTime(H.approved.at) : H.rejected ? fmtTime(H.rejected.at) : 'You will see it here' },
     { title: ex ? 'New item delivered' : 'Money back',
-      note: H.resolved ? `${H.resolved.note} · ${fmtTime(H.resolved.at)}` : ex ? 'Rider brings a fresh one and collects the old item' : (sent ? req.refund_to : dest) === 'source' ? `Back to ${destLabel} in 3–5 working days` : 'Added to FreshMart Cash right after approval' },
+      note: H.resolved ? `${H.resolved.note} · ${fmtTime(H.resolved.at)}` : ex ? (st === 'in_progress' ? exLine : 'Rider brings a fresh one and collects the old item') : (sent ? req.refund_to : dest) === 'source' ? `Back to ${destLabel} in 3–5 working days` : 'Added to FreshMart Cash right after approval' },
   ].slice(0, st === 'cancelled' ? 4 : st === 'rejected' ? 5 : 6)
 
   const hero = !sent
     ? { tone: 'form', k: 'REPORT AN ISSUE', t: 'Tell us what went wrong', s: 'Three quick steps. We will sort it out fast.', lbl: 'item value' }
     : st === 'open' ? { tone: 'wait', k: 'UNDER REVIEW', t: 'The store is checking it', s: 'Most requests are answered within 2 hours.', lbl: ex ? 'item value' : 'if approved' }
-    : st === 'in_progress' ? { tone: 'ok', k: 'EXCHANGE APPROVED', t: 'A fresh one is coming', s: 'Our rider brings the new item and collects the old one.', lbl: 'exchange' }
+    : st === 'in_progress' ? { tone: 'ok', k: exOrder?.status === 'out_for_delivery' ? 'EXCHANGE · ON THE WAY' : 'EXCHANGE APPROVED', t: 'A fresh one is coming', s: `${exLine}. Keep the old item ready.`, lbl: 'exchange' }
     : st === 'resolved' ? (ex
       ? { tone: 'done', k: 'EXCHANGED', t: 'Fresh item delivered', s: 'Sorry about that, and thanks for telling us.', lbl: 'exchanged' }
       : { tone: 'done', k: 'REFUNDED', t: `${rs(reqAmount)} is back`, s: req.refund_to === 'source' ? `Refund sent to ${destLabel}. It shows in 3–5 working days.` : 'Added to your FreshMart Cash. Use it on your next order.', lbl: 'refunded' })
@@ -306,6 +314,9 @@ export default function Issue() {
             <>
               <button type="button" className="is-btn ghost" onClick={() => navigate('/contact')}><MessageCircle size={18} /> Chat with us</button>
               {st === 'open' && <button type="button" className="is-btn ghost danger" disabled={busy} onClick={cancelReq}>Cancel request</button>}
+              {st === 'in_progress' && req.exchange_order_id && (
+                <button type="button" className="is-btn" onClick={() => navigate(`/track/${req.exchange_order_id}`)}><MapPin size={18} /> Track on map</button>
+              )}
               {st === 'cancelled' && <button type="button" className="is-btn" onClick={() => { setReq(null); setStep(1); setSel({}); setPhotos([]); setText('') }}>Report again</button>}
               {['resolved', 'rejected'].includes(st) && <button type="button" className="is-btn" onClick={() => navigate('/')}>Continue shopping</button>}
             </>

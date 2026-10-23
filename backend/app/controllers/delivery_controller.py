@@ -91,6 +91,7 @@ async def available_tasks(rider: dict) -> list[dict]:
             "items_count": sum(i["quantity"] for i in o["items"]),
             "cod_amount": o["bill"]["total"] if cod else 0,
             "earning": _rider_fee(o),
+            "is_exchange": bool(o.get("is_exchange")),
             "tip": o["bill"].get("tip", 0),
             "created_at": o["created_at"],
         })
@@ -205,6 +206,9 @@ async def deliver(rider: dict, data: DeliverRequest) -> dict:
                                       "note": f"Delivered by {order['partner']['name']}"}}},
     )
     await db.users.update_one({"_id": ObjectId(rider["id"])}, {"$set": {"active_order_id": None}})
+    if order.get("is_exchange"):
+        from app.controllers.complaint_controller import exchange_delivered
+        await exchange_delivered(order, order["partner"]["name"])
     return {"message": "Delivered", "earning": _rider_fee(order)}
 
 
@@ -264,6 +268,8 @@ async def track_for_customer(customer: dict, order_id: str) -> dict:
         "items_count": sum(i["quantity"] for i in order["items"]),
         "items": [{"name": i["name"], "quantity": i["quantity"], "unit": i.get("unit")} for i in order["items"]],
         "instructions": order.get("instructions") or [],
+        "is_exchange": bool(order.get("is_exchange")),
+        "exchange_for": order.get("exchange_for"),
         "created_at": order["created_at"],
         "delivered_at": order.get("delivered_at"),
         "rating": order.get("rating"),

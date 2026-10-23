@@ -245,6 +245,9 @@ async def update_order_status(admin: dict, order_id: str, data: OrderStatusUpdat
             {"_id": order["_id"]},
             {"$set": updates, "$push": {"status_history": {"status": new, "at": now, "note": data.note}}},
         )
+        if new == "delivered" and order.get("is_exchange"):
+            from app.controllers.complaint_controller import exchange_delivered
+            await exchange_delivered(order, "the store")
     return hide_code(serialize(await db.orders.find_one({"_id": order["_id"]})))
 
 

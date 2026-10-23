@@ -15,7 +15,7 @@ function TaskCard({ t, pos, onAccept, busy }) {
     <article className="rd-task">
       <div className="rd-task-top">
         <div>
-          <span className="rd-kicker amber">New delivery</span>
+          <span className="rd-kicker amber">{t.is_exchange ? 'Exchange delivery' : 'New delivery'}</span>
           <div className="rd-earn">{rs(t.earning)} {t.tip > 0 && <small>incl. ₹{Math.round(t.tip)} tip</small>}</div>
         </div>
         <span className={`rd-chip ${t.status === 'packed' ? 'green' : ''}`}>{t.status === 'packed' ? 'Packed, ready' : 'Store packing'}</span>
@@ -37,7 +37,7 @@ function TaskCard({ t, pos, onAccept, busy }) {
       </div>
       <div className="rd-tags">
         <span>{t.items_count} items</span>
-        {t.cod_amount > 0 ? <span className="amber">Collect {rs(t.cod_amount)} cash</span> : <span>Prepaid</span>}
+        {t.is_exchange ? <span className="amber">Bring old item back</span> : t.cod_amount > 0 ? <span className="amber">Collect {rs(t.cod_amount)} cash</span> : <span>Prepaid</span>}
         <span>#{t.order_number}</span>
       </div>
       <button className="rd-btn" disabled={busy} onClick={() => onAccept(t.id)}>{busy ? 'Accepting…' : 'Accept delivery'}</button>

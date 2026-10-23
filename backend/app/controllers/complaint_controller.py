@@ -1,3 +1,5 @@
+import secrets
+
 from bson import ObjectId
 from fastapi import HTTPException, status
 
@@ -177,11 +179,21 @@ async def _respond_item_request(c: dict, data: ComplaintRespond) -> None:
                 note = f"₹{amt:g} refund sent to your original payment (3–5 working days)"
             sets.update({"status": "resolved", "refunded_at": now})
             hist.append(_hist("resolved", note, now))
-        else:  # exchange: approved now, delivered later
-            sets["status"] = "in_progress"
+        else:  # exchange: a free replacement order goes out like a normal delivery
+            ex_order = await _create_exchange_order(c, now)
+            sets.update({"status": "in_progress", "exchange_order_id": ex_order["_id"],
+                         "exchange_order_number": ex_order["order_number"]})
+            hist.append(_hist("dispatch", f"Replacement order #{ex_order['order_number']} sent to delivery partners", now))
     elif want == "resolved" and c["status"] == "in_progress" and c["resolution"] == "exchange":
+        # store delivered it themselves (no rider)
         sets.update({"status": "resolved", "exchanged_at": now})
         hist.append(_hist("resolved", "New item delivered, old item collected", now))
+        if c.get("exchange_order_id"):
+            await db.orders.update_one(
+                {"_id": c["exchange_order_id"], "status": {"$nin": ["delivered", "cancelled"]}},
+                {"$set": {"status": "delivered", "delivered_at": now, "updated_at": now},
+                 "$push": {"status_history": {"status": "delivered", "at": now, "note": "Delivered by the store"}}},
+            )
     else:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "That step is not allowed for this request")
 
@@ -214,3 +226,79 @@ async def _respond_simple(c: dict, data: ComplaintRespond) -> None:
                 {"_id": order["_id"]},
                 {"$set": {"payment.status": "refunded", "payment.refunded_at": now, "updated_at": now}},
             )
+
+
+# ---------------- Exchange = a free replacement order ----------------
+async def _create_exchange_order(c: dict, now) -> dict:
+    """Copy the exchanged items into a ₹0 order (status confirmed) so the normal
+    delivery flow picks it up: riders see it, accept, pick up, deliver with a code."""
+    db = get_db()
+    order = await db.orders.find_one({"_id": c["order_id"]})
+    if not order:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Original order not found")
+    lines_by_pid = {i["pid"]: i for i in order["items"]}
+
+    # take the fresh items out of stock (roll back if one is missing)
+    taken = []
+    for it in c["items"]:
+        res = await db.products.update_one({"pid": it["pid"], "stock": {"$gte": it["quantity"]}}, {"$inc": {"stock": -it["quantity"]}})
+        if res.modified_count == 0:
+            for pid, q in taken:
+                await db.products.update_one({"pid": pid}, {"$inc": {"stock": q}})
+            raise HTTPException(status.HTTP_409_CONFLICT, f"{it['name']} is out of stock. Approve a refund instead.")
+        taken.append((it["pid"], it["quantity"]))
+
+    lines = []
+    for it in c["items"]:
+        src = lines_by_pid.get(it["pid"], {})
+        lines.append({"pid": it["pid"], "product_id": src.get("product_id"), "name": it["name"], "unit": it.get("unit", ""),
+                      "image_url": it.get("image_url"), "price": 0, "quantity": it["quantity"], "line_total": 0})
+    bill = {"subtotal": 0, "delivery_fee": 0, "tip": 0, "coupon_discount": 0, "payment_discount": 0, "cashback": 0, "total": 0}
+    number = f"{order['order_number']}-X"
+    if await db.orders.find_one({"order_number": number}):
+        number = f"{number}{secrets.randbelow(90) + 10}"
+    doc = {
+        "order_number": number,
+        "group_id": order.get("group_id"),
+        "customer_id": order["customer_id"],
+        "customer_name": order.get("customer_name"),
+        "customer_phone": order.get("customer_phone"),
+        "store_id": order["store_id"],
+        "store_name": order.get("store_name"),
+        "items": lines,
+        "bill": bill,
+        "coupon_code": None,
+        "payment": {"method": "exchange", "status": "paid", "transaction_id": None, "paid_at": now},
+        "address": order["address"],
+        "instructions": ["Exchange: collect the old item from the customer and bring it back to the store"],
+        "slot": None,
+        "status": "confirmed",
+        "status_history": [
+            {"status": "placed", "at": now, "note": f"Exchange for #{order['order_number']}"},
+            {"status": "confirmed", "at": now, "note": "Exchange approved by the store"},
+        ],
+        "delivery_code": f"{secrets.randbelow(10000):04d}",
+        "partner": None,
+        "rider_location": None,
+        "is_exchange": True,
+        "exchange_for": order["order_number"],
+        "complaint_id": c["_id"],
+        "created_at": now,
+        "updated_at": now,
+    }
+    res = await db.orders.insert_one(doc)
+    doc["_id"] = res.inserted_id
+    return doc
+
+
+async def exchange_delivered(order: dict, by: str) -> None:
+    """Called when a replacement order is delivered: close the exchange request."""
+    if not order.get("is_exchange") or not order.get("complaint_id"):
+        return
+    db = get_db()
+    now = now_utc()
+    await db.complaints.update_one(
+        {"_id": order["complaint_id"], "status": "in_progress"},
+        {"$set": {"status": "resolved", "exchanged_at": now, "updated_at": now},
+         "$push": {"history": _hist("resolved", f"Fresh item delivered by {by}, old item collected", now)}},
+    )

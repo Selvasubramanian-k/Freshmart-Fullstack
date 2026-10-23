@@ -60,10 +60,12 @@ function ItemRequest({ c, onSaved }) {
         c.response && <p className="ad-reply"><b>Your reply:</b> {c.response}</p>
       ) : c.status === 'in_progress' ? (
         <>
-          <p className="ad-reply"><b>Approved.</b> Send the fresh item and collect the old one, then mark it done.</p>
+          <p className="ad-reply"><b>Approved.</b> {c.exchange_order_number
+            ? <>Replacement order <span className="mono">#{c.exchange_order_number}</span> went to delivery partners like a normal order. It closes by itself once the rider delivers it.</>
+            : 'Send the fresh item and collect the old one, then mark it done.'}</p>
           <ErrorNote>{error}</ErrorNote>
           <div className="ad-form-actions">
-            <button className="ad-btn" disabled={busy} onClick={() => act('resolved', c.response)}>Mark exchanged (new item delivered)</button>
+            <button className="ad-btn ghost" disabled={busy} onClick={() => act('resolved', c.response)}>We delivered it ourselves</button>
           </div>
         </>
       ) : (
@@ -74,7 +76,7 @@ function ItemRequest({ c, onSaved }) {
           <div className="ad-form-actions">
             <button className="ad-btn ghost danger" disabled={busy} onClick={() => act('rejected', '')}>Reject</button>
             <button className="ad-btn" disabled={busy} onClick={() => act('in_progress', ex ? 'Sorry about this! A fresh one is on the way.' : 'Sorry about this! Refund approved.')}>
-              {ex ? 'Approve exchange' : `Approve refund · ${rs(c.amount)}`}
+              {ex ? 'Approve & send a rider' : `Approve refund · ${rs(c.amount)}`}
             </button>
           </div>
         </>
@@ -146,7 +148,7 @@ export default function Complaints() {
 
   return (
     <>
-      <PageHead title="Returns & Complaints" sub="Refunds go out when you approve. Exchanges: approve, send a fresh item, then mark exchanged." />
+      <PageHead title="Returns & Complaints" sub="Refunds go out when you approve. Approving an exchange sends a free replacement order to delivery partners." />
       <div className="ad-tabs">
         {FILTERS.map(([id, label]) => (
           <button key={id} className={`ad-tab ${filter === id ? 'on' : ''}`} onClick={() => setFilter(id)}>{label}</button>

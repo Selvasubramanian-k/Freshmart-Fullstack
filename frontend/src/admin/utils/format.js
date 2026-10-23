@@ -33,7 +33,7 @@ const RIDER_STEPS = ['out_for_delivery', 'delivered']
 export const actionsFor = (order) => (NEXT_ACTIONS[order.status] || [])
   .filter(a => !(order.partner && RIDER_STEPS.includes(a.to)))
 
-export const PAY_NAMES = { gpay: 'GPay', phonepe: 'PhonePe', paytm: 'Paytm', bhim: 'BHIM', card: 'Card', nb: 'Net Banking', cod: 'Cash on Delivery' }
+export const PAY_NAMES = { exchange: 'Free exchange', gpay: 'GPay', phonepe: 'PhonePe', paytm: 'Paytm', bhim: 'BHIM', card: 'Card', nb: 'Net Banking', cod: 'Cash on Delivery' }
 export const SLOT_NAMES = { now: 'Now (10 min)', hour: 'In 1 hour', night: 'Tonight 7–9 pm', morn: 'Tomorrow 7–9 am' }
 
 export const COMPLAINT_TYPES = {

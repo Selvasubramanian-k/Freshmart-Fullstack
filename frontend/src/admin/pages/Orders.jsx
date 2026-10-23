@@ -179,7 +179,7 @@ export default function Orders() {
                   const next = o.status === 'packed' && !o.partner ? { label: 'Waiting for rider' } : actionsFor(o)[0]
                   return (
                     <tr key={o.id} className="clickable" onClick={() => setOpen(o.id)}>
-                      <td className="mono">#{o.order_number}</td>
+                      <td className="mono">#{o.order_number}{o.is_exchange && <span className="ad-ex-tag">EXCHANGE</span>}</td>
                       <td>{o.customer_name}</td>
                       <td>{o.items.reduce((n, i) => n + i.quantity, 0)}</td>
                       <td><b>{rs(o.bill.total)}</b></td>

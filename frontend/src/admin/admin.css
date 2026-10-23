@@ -309,3 +309,4 @@ textarea.ad-input { resize: vertical; }
 .ad-req-items .ad-row { display: flex; justify-content: space-between; gap: 12px; font-size: 13.5px; }
 .ad-req-photos { display: flex; gap: 8px; flex-wrap: wrap; }
 .ad-req-photos img { width: 84px; height: 84px; object-fit: cover; border-radius: 10px; border: 1px solid #e5e7eb; display: block; }
+.ad-ex-tag { margin-left: 6px; padding: 2px 7px; border-radius: 999px; background: #fff3e6; color: #9a4a00; font-size: 10.5px; font-weight: 800; font-family: 'Montserrat', sans-serif; }
