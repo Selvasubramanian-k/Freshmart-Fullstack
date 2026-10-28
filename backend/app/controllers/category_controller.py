@@ -9,7 +9,7 @@ from fastapi import HTTPException, status
 
 from app.controllers.store_controller import get_admin_store_doc
 from app.database import get_db
-from app.models.category import CategoryCreate
+from app.models.category import CategoryCreate, CategoryUpdate
 from app.utils.helpers import now_utc
 
 DEFAULTS = [
@@ -24,6 +24,39 @@ DEFAULTS = [
     {"id": "petcare",   "label": "Pet Care",        "icon": "paw-print",   "title": "Pet Care"},
 ]
 FIELDS = ("id", "label", "title", "icon", "badge")
+
+# Name -> icon, same rules as frontend src/customer/data/categoryIcons.js (first match wins)
+ICON_RULES = [
+    (r"pooja|puja|poojai|diya|vilakku|deepam", "diya"),
+    (r"festive|festival|diwali|deepavali|pongal|party", "sparkles"),
+    (r"baby|kids|infant", "baby"),
+    (r"ice ?cream", "ice-cream"),
+    (r"frozen|ready to cook", "snowflake"),
+    (r"rice|dal|atta|grain|flour|millet|arisi", "wheat"),
+    (r"pickle|oorugai|jam|sauce", "jar"),
+    (r"masala|spice|podi|chilli", "flame"),
+    (r"cake|bakery", "cake"),
+    (r"biscuit|cookie", "cookie"),
+    (r"sweet|chocolate|candy|mithai", "candy"),
+    (r"medicine|pharma|medical|tablet", "pill"),
+    (r"health|organic|wellness|nuts|dry fruit|herbal", "leaf"),
+    (r"flower|poo\b|garland", "flower"),
+    (r"stationery|school|office|book", "pencil"),
+    (r"gift", "gift"),
+    (r"kitchen|utensil|disposable", "utensils"),
+    (r"coffee|tea", "coffee"),
+    (r"soup|noodle|instant", "soup"),
+    (r"vegetable|veggies", "carrot"),
+    (r"personal|beauty|soap|bath|skin|hair", "droplet"),
+]
+
+
+def auto_icon(label: str) -> str:
+    name = label.lower()
+    for pattern, icon in ICON_RULES:
+        if re.search(pattern, name):
+            return icon
+    return "shopping-bag"
 
 
 def _out(doc: dict) -> dict:
@@ -79,7 +112,7 @@ async def create_category(admin: dict, data: CategoryCreate) -> dict:
     if await db.categories.find_one({"$or": [{"id": cid}, {"label": {"$regex": f"^{re.escape(label)}$", "$options": "i"}}]}):
         raise HTTPException(status.HTTP_409_CONFLICT, f"“{label}” already exists.")
     last = await db.categories.find_one({}, sort=[("order", -1)])
-    doc = {"id": cid, "label": label, "title": (data.title or "").strip() or label, "icon": "shopping-bag",
+    doc = {"id": cid, "label": label, "title": (data.title or "").strip() or label, "icon": data.icon or auto_icon(label),
            "order": (last or {}).get("order", 0) + 1, "builtin": False, "created_at": now_utc()}
     await db.categories.insert_one(doc)
     return {**_out(doc), "products": 0}
@@ -95,3 +128,14 @@ async def delete_category(admin: dict, cid: str) -> dict:
         raise HTTPException(status.HTTP_409_CONFLICT, f"{n} product{'s' if n > 1 else ''} use this category. Move them first.")
     await db.categories.delete_one({"id": cid})
     return {"deleted": cid}
+
+
+async def update_category(admin: dict, cid: str, data: CategoryUpdate) -> dict:
+    await get_admin_store_doc(admin)
+    db = get_db()
+    doc = await db.categories.find_one_and_update(
+        {"id": cid}, {"$set": {"icon": data.icon, "updated_at": now_utc()}}, return_document=True
+    )
+    if not doc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Category not found")
+    return _out(doc)

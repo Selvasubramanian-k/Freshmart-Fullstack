@@ -10,7 +10,7 @@ from app.controllers import (
     staff_controller, store_controller,
 )
 from app.middleware.auth import require_admin
-from app.models.category import CategoryCreate
+from app.models.category import CategoryCreate, CategoryUpdate
 from app.models.complaint import ComplaintRespond
 from app.models.delivery import AssignRequest
 from app.models.order import OrderStatusUpdate
@@ -56,6 +56,11 @@ async def list_categories(user: dict = Depends(require_admin)):
 @router.post("/categories", status_code=status.HTTP_201_CREATED)
 async def create_category(data: CategoryCreate, user: dict = Depends(require_admin)):
     return await category_controller.create_category(user, data)
+
+
+@router.patch("/categories/{cid}")
+async def update_category(cid: str, data: CategoryUpdate, user: dict = Depends(require_admin)):
+    return await category_controller.update_category(user, cid, data)
 
 
 @router.delete("/categories/{cid}")

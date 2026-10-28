@@ -4,6 +4,8 @@ import { Plus, Search, Pencil, Trash2, Package, Upload, Lock } from 'lucide-reac
 import { api } from '../../shared/api/client.js'
 import { resolveImage } from '../../shared/utils/images.js'
 import { CATEGORIES } from '../../customer/data/categories.js'
+import { ICON_CHOICES, autoIcon } from '../../customer/data/categoryIcons.js'
+import Icon from '../../customer/components/Icon.jsx'
 import { Empty, ErrorNote, Modal, PageHead } from '../components/ui.jsx'
 import { rs } from '../utils/format.js'
 
@@ -20,20 +22,55 @@ const daysLeft = (date) => {
 
 const EMPTY = { name: '', category: 'fruits', unit: '1 kg', price: '', mrp: '', stock: '', tag: 'popular', image_url: '', expiry_date: '', description: '', is_active: true }
 
+function IconPicker({ title, current, onPick, onClose, onAuto }) {
+  return (
+    <div className="ad-iconpick" role="group" aria-label={title}>
+      <div className="ad-iconpick-head">
+        <b>{title}</b>
+        <button type="button" className="ad-linkbtn" onClick={onClose}>Close</button>
+      </div>
+      <div className="ad-iconpick-grid">
+        {ICON_CHOICES.map(ic => (
+          <button key={ic.key} type="button" className={ic.key === current ? 'on' : ''} aria-pressed={ic.key === current}
+            title={ic.label} onClick={() => onPick(ic.key)}>
+            <span className="ad-iconpick-ic"><Icon name={ic.key} /></span>
+            <span>{ic.label}</span>
+          </button>
+        ))}
+      </div>
+      {onAuto && <button type="button" className="ad-linkbtn" onClick={onAuto}>↺ Go back to auto icon</button>}
+    </div>
+  )
+}
+
 function CategoryManager({ cats, setCats, onAdded }) {
   const [draft, setDraft] = useState('')
+  const [override, setOverride] = useState(null)   // icon the admin picked for the new category
+  const [picker, setPicker] = useState(null)       // null | 'new' | category id
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+
+  const auto = autoIcon(draft)
+  const newIcon = override || auto
+  const typed = draft.trim().length > 0
+  const editing = picker && picker !== 'new' ? cats.find(c => c.id === picker) : null
 
   const add = async () => {
     const label = draft.trim()
     if (label.length < 2) return setErr('Type a category name (2+ letters).')
     setBusy(true); setErr('')
     try {
-      const c = await api.post('/api/admin/categories', { label })
-      setCats(xs => [...xs, c]); setDraft(''); onAdded(c.id)
+      const c = await api.post('/api/admin/categories', { label, icon: newIcon })
+      setCats(xs => [...xs, c]); setDraft(''); setOverride(null); setPicker(null); onAdded(c.id)
     } catch (e) { setErr(e.message) }
     finally { setBusy(false) }
+  }
+  const setRowIcon = async (c, icon) => {
+    setErr('')
+    const before = c.icon
+    setCats(xs => xs.map(x => x.id === c.id ? { ...x, icon } : x))
+    try { await api.patch(`/api/admin/categories/${c.id}`, { icon }) }
+    catch (e) { setErr(e.message); setCats(xs => xs.map(x => x.id === c.id ? { ...x, icon: before } : x)) }
   }
   const del = async (c) => {
     if (c.products) return
@@ -47,14 +84,37 @@ function CategoryManager({ cats, setCats, onAdded }) {
     <section className="ad-catman full" aria-label="Manage categories">
       <div className="ad-catman-head"><b>Categories</b><span className="ad-muted ad-small">{cats.length} categories</span></div>
       <div className="ad-catman-add">
-        <input className="ad-input" aria-label="New category name" placeholder="New category, e.g. Pooja Items" maxLength={30}
-          value={draft} onChange={(e) => setDraft(e.target.value)}
+        <button type="button" className="ad-catman-icon new" aria-label={`Icon for the new category: ${newIcon}. Change icon`}
+          aria-expanded={picker === 'new'} title="Change icon" onClick={() => setPicker(p => p === 'new' ? null : 'new')}>
+          <Icon name={newIcon} />
+        </button>
+        <input className="ad-input" aria-label="New category name" placeholder="New category, e.g. Baby Care" maxLength={30}
+          value={draft} onChange={(e) => { setDraft(e.target.value); setOverride(null) }}
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add() } }} />
         <button type="button" className="ad-btn" disabled={busy} onClick={add}><Plus size={16} /> {busy ? 'Adding…' : 'Add'}</button>
       </div>
+      <div className="ad-catman-hint">
+        <span className={`ad-catman-mode ${override ? 'picked' : ''}`}>{override ? 'YOU PICKED' : 'AUTO'}</span>
+        <span>{!typed ? 'Type a name, the icon picks itself.' : 'Tap the icon box to change it.'}</span>
+      </div>
+
+      {picker === 'new' && (
+        <IconPicker title={`Icon for ${draft.trim() || 'new category'}`} current={newIcon}
+          onPick={(k) => setOverride(k === auto ? null : k)} onClose={() => setPicker(null)}
+          onAuto={override ? () => setOverride(null) : null} />
+      )}
+      {editing && (
+        <IconPicker title={`Icon for ${editing.label}`} current={editing.icon}
+          onPick={(k) => setRowIcon(editing, k)} onClose={() => setPicker(null)} />
+      )}
+
       <ul className="ad-catman-list">
         {cats.map(c => (
-          <li key={c.id}>
+          <li key={c.id} className={picker === c.id ? 'editing' : ''}>
+            <button type="button" className="ad-catman-icon" aria-label={`Change icon for ${c.label}`} aria-expanded={picker === c.id}
+              title="Change icon" onClick={() => setPicker(p => p === c.id ? null : c.id)}>
+              <Icon name={c.icon} id={c.id} />
+            </button>
             <span className="ad-catman-name">{c.label}</span>
             <span className="ad-muted ad-small">{c.products == null ? '' : c.products ? `${c.products} product${c.products > 1 ? 's' : ''}` : 'empty'}</span>
             <button type="button" className={`ad-catman-del ${c.products ? 'locked' : ''}`} disabled={Boolean(c.products)}
@@ -64,7 +124,7 @@ function CategoryManager({ cats, setCats, onAdded }) {
         ))}
       </ul>
       {err && <ErrorNote>{err}</ErrorNote>}
-      <span className="ad-muted ad-small">A category with products can’t be deleted. Move its products first.</span>
+      <span className="ad-muted ad-small">Tap any icon box to change that category’s icon. A category with products can’t be deleted.</span>
     </section>
   )
 }

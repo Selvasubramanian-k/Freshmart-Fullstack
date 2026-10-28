@@ -8,7 +8,21 @@ import {
   ClipboardList, Receipt, CreditCard, Landmark, Banknote, Lock, Building2, House, MapPin, Check, Undo2, Wallet,
   ChevronRight, Mail, Clock, Star, Sunrise, Sun, Sunset, Moon, ThermometerSun, CloudRain, Snowflake, CloudSun,
   EllipsisVertical, Headphones,
+  Baby, Wheat, Candy, Leaf, Utensils, Droplet, Pencil, Carrot, Coffee, Soup, Cookie, Cake, IceCreamCone, Flower2,
 } from 'lucide-react'
+
+// lucide la illaadha 2 icons (same 24px stroke style)
+const svgProps = { xmlns: 'http://www.w3.org/2000/svg', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round' }
+const Diya = ({ size, strokeWidth, ...rest }) => (
+  <svg width={size} height={size} strokeWidth={strokeWidth} {...svgProps} {...rest}>
+    <path d="M3 13h18c-1 4-5 6-9 6s-8-2-9-6Z" /><path d="M12 3c1.5 2 2.5 3.3 2.5 5a2.5 2.5 0 0 1-5 0c0-1.7 1-3 2.5-5Z" /><path d="M9 22h6" />
+  </svg>
+)
+const Jar = ({ size, strokeWidth, ...rest }) => (
+  <svg width={size} height={size} strokeWidth={strokeWidth} {...svgProps} {...rest}>
+    <path d="M8 2h8" /><path d="M7 5h10v15a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2Z" /><path d="M7 10h10" />
+  </svg>
+)
 
 const BY_NAME = {
   'shopping-cart': ShoppingCart, 'shopping-bag': ShoppingBag,
@@ -22,6 +36,10 @@ const BY_NAME = {
   sunrise: Sunrise, sun: Sun, sunset: Sunset, moon: Moon, 'thermometer-sun': ThermometerSun,
   'cloud-rain': CloudRain, snowflake: Snowflake, 'cloud-sun': CloudSun, 'ellipsis-vertical': EllipsisVertical,
   headphones: Headphones,
+  // category icons (admin Manage -> icon picker)
+  diya: Diya, jar: Jar, baby: Baby, wheat: Wheat, candy: Candy, leaf: Leaf, utensils: Utensils, droplet: Droplet,
+  pencil: Pencil, carrot: Carrot, coffee: Coffee, soup: Soup, cookie: Cookie, cake: Cake, 'ice-cream': IceCreamCone,
+  flower: Flower2,
 }
 
 const CATEGORY_ICON = {
