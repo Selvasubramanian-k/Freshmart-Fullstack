@@ -1,13 +1,13 @@
 """Shop Owner / Store Admin APIs."""
 import secrets
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 
 from app.controllers import (
     category_controller, complaint_controller, dashboard_controller, delivery_controller, order_controller, product_controller,
-    staff_controller, store_controller,
+    sales_controller, staff_controller, store_controller,
 )
 from app.middleware.auth import require_admin
 from app.models.category import CategoryCreate, CategoryUpdate
@@ -15,8 +15,10 @@ from app.models.complaint import ComplaintRespond
 from app.models.delivery import AssignRequest
 from app.models.order import OrderStatusUpdate
 from app.models.product import ProductCreate, ProductUpdate, StockUpdate
+from app.models.sale import SaleCreate
 from app.models.staff import StaffCreate, StaffUpdate
 from app.models.store import StoreAvailability, StoreUpdate
+from app.utils.helpers import now_utc
 
 router = APIRouter(prefix="/api/admin", tags=["Store admin"], dependencies=[Depends(require_admin)])
 
@@ -125,10 +127,31 @@ async def update_order_status(order_id: str, data: OrderStatusUpdate, user: dict
     return await order_controller.update_order_status(user, order_id, data)
 
 
-# ---------- Earnings ----------
+# ---------- Earnings (online + in-store) ----------
 @router.get("/earnings")
-async def earnings(days: int = 7, user: dict = Depends(require_admin)):
-    return await order_controller.store_earnings(user, max(1, min(days, 90)))
+async def earnings(date_from: datetime | None = None, date_to: datetime | None = None, tz: int = 330,
+                   days: int = 7, user: dict = Depends(require_admin)):
+    """date_from / date_to: the browser's local day start/end (ISO). tz: browser offset in minutes east of UTC.
+    Without dates: the last `days` days."""
+    if not date_to:
+        date_to = now_utc()
+    if not date_from:
+        date_from = date_to - timedelta(days=max(1, min(days, 400)))
+    if date_to - date_from > timedelta(days=400):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Pick a range of 400 days or less")
+    return await sales_controller.earnings(user, date_from, date_to, max(-720, min(tz, 840)))
+
+
+# ---------- Counter (in-store) sales ----------
+@router.post("/sales", status_code=status.HTTP_201_CREATED)
+async def create_sale(data: SaleCreate, user: dict = Depends(require_admin)):
+    return await sales_controller.create_sale(user, data)
+
+
+@router.get("/sales")
+async def list_sales(date_from: datetime | None = None, date_to: datetime | None = None, limit: int = 50,
+                     user: dict = Depends(require_admin)):
+    return await sales_controller.list_sales(user, date_from, date_to, max(1, min(limit, 500)))
 
 
 # ---------- Staff ----------

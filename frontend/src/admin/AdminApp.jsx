@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { NavLink, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import {
-  LayoutDashboard, Package, ClipboardList, Store, Users, IndianRupee, MessageSquareWarning, LogOut, Menu, X,
+  LayoutDashboard, Package, ClipboardList, Store, Users, IndianRupee, MessageSquareWarning, LogOut, Menu, X, ShoppingCart,
 } from 'lucide-react'
 import { useAuth } from '../shared/context/AuthContext.jsx'
 import { api } from '../shared/api/client.js'
@@ -12,6 +12,7 @@ import Orders from './pages/Orders.jsx'
 import StoreSettings from './pages/StoreSettings.jsx'
 import Staff from './pages/Staff.jsx'
 import Earnings from './pages/Earnings.jsx'
+import Counter from './pages/Counter.jsx'
 import Complaints from './pages/Complaints.jsx'
 import './admin.css'
 
@@ -22,6 +23,7 @@ import './admin.css'
 const NAV = [
   { to: '/admin',            label: 'Dashboard',  icon: LayoutDashboard, end: true },
   { to: '/admin/orders',     label: 'Orders',     icon: ClipboardList },
+  { to: '/admin/counter',    label: 'Counter sale', icon: ShoppingCart },
   { to: '/admin/products',   label: 'Products',   icon: Package },
   { to: '/admin/complaints', label: 'Returns & Complaints', icon: MessageSquareWarning },
   { to: '/admin/earnings',   label: 'Earnings',   icon: IndianRupee },
@@ -103,6 +105,7 @@ export default function AdminApp() {
             <Route path="products" element={<Products />} />
             <Route path="complaints" element={<Complaints />} />
             <Route path="earnings" element={<Earnings />} />
+            <Route path="counter" element={<Counter />} />
             <Route path="staff" element={<Staff />} />
             <Route path="store" element={<StoreSettings onSaved={setStore} />} />
             <Route path="*" element={<Navigate to="/admin" replace />} />
