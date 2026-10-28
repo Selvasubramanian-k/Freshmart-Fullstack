@@ -35,7 +35,14 @@ def get_db():
 
 async def create_indexes() -> None:
     db = db_state.db
-    await db.users.create_index([("email", ASCENDING)], unique=True)
+    # email: unique but optional (OTP sign-ups may skip it) -> sparse. Old non-sparse index is replaced once.
+    info = await db.users.index_information()
+    if "email_1" in info and not info["email_1"].get("sparse"):
+        await db.users.drop_index("email_1")
+    await db.users.create_index([("email", ASCENDING)], unique=True, sparse=True)
+    await db.users.create_index([("phone", ASCENDING)])
+    await db.users.create_index([("role", ASCENDING), ("status", ASCENDING)])
+    await db.otp_codes.create_index([("phone", ASCENDING)], unique=True)
     await db.stores.create_index([("owner_id", ASCENDING)], unique=True)
     await db.products.create_index([("pid", ASCENDING)], unique=True)
     await db.products.create_index([("store_id", ASCENDING), ("category", ASCENDING)])

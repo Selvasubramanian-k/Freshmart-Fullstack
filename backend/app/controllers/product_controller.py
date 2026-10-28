@@ -113,7 +113,7 @@ async def browse_products(q: str | None = None, category: str | None = None,
                           store_id: str | None = None) -> list[dict]:
     """Active products from open stores. The customer app loads this once as its catalog."""
     db = get_db()
-    store_query: dict = {"is_open": True}
+    store_query: dict = {"is_open": True, "status": {"$nin": ["pending", "rejected"]}}
     if store_id:
         store_query["_id"] = to_object_id(store_id, "store id")
     stores = await db.stores.find(store_query, {"name": 1}).to_list(None)

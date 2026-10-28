@@ -27,6 +27,13 @@ export function AuthProvider({ children }) {
     return res.user
   }, [])
 
+  // OTP login / sign-up reply ({ access_token, user }) -> logged in
+  const signIn = useCallback((res) => {
+    setToken(res.access_token, true)
+    setUser(res.user)
+    return res.user
+  }, [])
+
   const register = useCallback(async (payload) => {
     const res = await api.post('/api/auth/register', payload)
     setToken(res.access_token)
@@ -41,8 +48,8 @@ export function AuthProvider({ children }) {
   }, [])
 
   const value = useMemo(
-    () => ({ user, loading, login, register, logout, updateProfile }),
-    [user, loading, login, register, logout, updateProfile]
+    () => ({ user, loading, login, signIn, register, logout, updateProfile }),
+    [user, loading, login, signIn, register, logout, updateProfile]
   )
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

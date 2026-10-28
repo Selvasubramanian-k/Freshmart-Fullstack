@@ -22,21 +22,24 @@ async def add_staff(admin: dict, data: StaffCreate) -> dict:
            "store_id": store["_id"], "is_active": True, "created_at": now_utc()}
 
     if data.role.value == "delivery":
-        # store's own delivery staff: a delivery-app login that only gets this store's orders
-        if not data.email or not data.password:
-            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Delivery staff need an email and a password to log in to the delivery app")
-        email = data.email.lower()
-        if await db.users.find_one({"email": email}):
+        # store's own delivery staff: logs in to the delivery app with this phone number (OTP)
+        if await db.users.find_one({"phone": data.phone, "role": "delivery"}):
+            raise HTTPException(status.HTTP_409_CONFLICT, "A delivery partner with this phone number already exists")
+        email = data.email.lower() if data.email else None
+        if email and await db.users.find_one({"email": email}):
             raise HTTPException(status.HTTP_409_CONFLICT, "An account with this email already exists")
         user = {
-            "name": data.name, "email": email, "phone": data.phone, "role": "delivery",
-            "password_hash": hash_password(data.password),
+            "name": data.name, "phone": data.phone, "role": "delivery", "status": "active", "login": "otp",
             "vehicle": {"type": "scooter", "number": (data.vehicle_number or "").upper() or None},
             "city": store.get("address", {}).get("city"), "is_online": False, "active_order_id": None,
             "store_id": store["_id"], "in_house": True, "is_active": True, "created_at": now_utc(),
         }
+        if email:
+            user["email"] = email
+        if data.password:   # optional: old email + password login still works
+            user["password_hash"] = hash_password(data.password)
         u = await db.users.insert_one(user)
-        doc.update({"email": email, "user_id": u.inserted_id})
+        doc.update({"user_id": u.inserted_id})
 
     res = await db.staff.insert_one(doc)
     doc["_id"] = res.inserted_id

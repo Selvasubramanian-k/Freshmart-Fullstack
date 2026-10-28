@@ -36,7 +36,9 @@ async def set_availability(admin: dict, data: StoreAvailability) -> dict:
 
 # ---------- public ----------
 async def list_stores(only_open: bool = False) -> list[dict]:
-    query = {"is_open": True} if only_open else {}
+    query: dict = {"status": {"$nin": ["pending", "rejected"]}}
+    if only_open:
+        query["is_open"] = True
     stores = await get_db().stores.find(query, {"gst_number": 0}).sort("name", 1).to_list(None)
     return serialize(stores)
 

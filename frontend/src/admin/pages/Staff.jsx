@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, Users } from 'lucide-react'
+import { Plus, Pencil, Trash2, Users, Check, X, Bike } from 'lucide-react'
 import { api } from '../../shared/api/client.js'
+import { resolveImage } from '../../shared/utils/images.js'
 import { Empty, ErrorNote, Modal, PageHead } from '../components/ui.jsx'
 
 const ROLES = { manager: 'Manager', picker: 'Picker', packer: 'Packer', cashier: 'Cashier', delivery: 'Delivery (own rider)' }
@@ -19,10 +20,8 @@ function StaffForm({ initial, onSaved, onClose }) {
     if (f.name.trim().length < 2) return setError('Enter the staff member\'s name.')
     if (!/^[6-9]\d{9}$/.test(f.phone)) return setError('Enter a valid 10-digit mobile number.')
     const rider = f.role === 'delivery' && !editing
-    if (rider && !/^\S+@\S+\.\S+$/.test(f.email.trim())) return setError('Delivery staff log in with an email. Enter their email.')
-    if (rider && f.password.length < 6) return setError('Set a password of at least 6 characters for the delivery app.')
     const body = { name: f.name.trim(), phone: f.phone, email: f.email.trim() || null, role: f.role, shift: f.shift }
-    if (rider) Object.assign(body, { password: f.password, vehicle_number: f.vehicle_number.trim() || null })
+    if (rider) Object.assign(body, { vehicle_number: f.vehicle_number.trim() || null })
     setBusy(true); setError('')
     try {
       onSaved(editing ? await api.put(`/api/admin/staff/${initial.id}`, body) : await api.post('/api/admin/staff', body), editing)
@@ -34,15 +33,14 @@ function StaffForm({ initial, onSaved, onClose }) {
       <form className="ad-form" onSubmit={submit} noValidate>
         <label className="ad-field full">Name<input className="ad-input" value={f.name} onChange={set('name')} autoFocus /></label>
         <label className="ad-field">Mobile<input className="ad-input" inputMode="numeric" value={f.phone} onChange={set('phone')} /></label>
-        <label className="ad-field">{f.role === 'delivery' ? 'Email (their login)' : 'Email (optional)'}<input className="ad-input" type="email" value={f.email} onChange={set('email')} disabled={editing && f.role === 'delivery'} /></label>
+        <label className="ad-field">Email (optional)<input className="ad-input" type="email" value={f.email} onChange={set('email')} disabled={editing && f.role === 'delivery'} /></label>
         <label className="ad-field">Role
           <select className="ad-input" value={f.role} onChange={set('role')} disabled={editing && initial.role === 'delivery'}>{Object.entries(ROLES).filter(([k]) => !editing || initial.role === 'delivery' || k !== 'delivery').map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
         </label>
         {f.role === 'delivery' && !editing && (
           <>
-            <label className="ad-field">Password for the delivery app<input className="ad-input" type="password" autoComplete="new-password" value={f.password} onChange={set('password')} /></label>
             <label className="ad-field">Vehicle number (optional)<input className="ad-input" value={f.vehicle_number} onChange={set('vehicle_number')} placeholder="TN09AB1234" /></label>
-            <p className="ad-od-note full">They log in to the FreshMart delivery app with this email and password. They only get your store’s orders, and customers see them live on the map.</p>
+            <p className="ad-od-note full">They log in to FreshMart with this mobile number (OTP), no password needed. They only get your store’s orders, and customers see them live on the map.</p>
           </>
         )}
         <label className="ad-field">Shift
@@ -58,13 +56,71 @@ function StaffForm({ initial, onSaved, onClose }) {
   )
 }
 
+const ago = (iso) => {
+  const m = Math.max(1, Math.round((Date.now() - new Date(iso)) / 60000))
+  return m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`
+}
+const VEH = { bike: 'Bike', scooter: 'Scooter', cycle: 'Cycle' }
+
+function RiderRequests({ items, onDecided }) {
+  const [busy, setBusy] = useState('')
+  const [error, setError] = useState('')
+  const decide = async (r, approve) => {
+    if (!approve && !window.confirm(`Reject ${r.name}'s request?`)) return
+    setBusy(r.id); setError('')
+    try { onDecided(await api.post(`/api/admin/rider-requests/${r.id}/${approve ? 'approve' : 'reject'}`)) }
+    catch (e) { setError(e.message) }
+    finally { setBusy('') }
+  }
+  if (!items.length) return <Empty icon={Bike} title="No new requests" text="People who tap “Join as a delivery partner” in the app show up here for you to approve." />
+  return (
+    <>
+      <ErrorNote>{error}</ErrorNote>
+      <div className="ad-req-grid">
+        {items.map(r => {
+          const photo = resolveImage(r.licence?.photo)
+          return (
+            <section key={r.id} className={`ad-card ad-rreq ${r.status}`}>
+              <div className="ad-rreq-head">
+                <span className="ad-rreq-av" aria-hidden="true">{(r.name || '?')[0].toUpperCase()}</span>
+                <div><b>{r.name}</b><span className="ad-muted ad-small">+91 {r.phone} · asked {ago(r.created_at)}</span></div>
+                <span className={`ad-rreq-pill ${r.status}`}>{r.status === 'pending' ? 'Waiting' : r.status === 'active' ? 'Approved' : 'Rejected'}</span>
+              </div>
+              <dl className="ad-rreq-facts">
+                <div><dt>Vehicle</dt><dd>{VEH[r.vehicle?.type] || r.vehicle?.type}{r.vehicle?.number ? ` · ${r.vehicle.number}` : ''}</dd></div>
+                <div><dt>Area</dt><dd>{r.area || '—'}</dd></div>
+                <div><dt>Licence no.</dt><dd>{r.licence?.number || '—'}</dd></div>
+                <div><dt>Licence photo</dt><dd>{photo ? <a href={photo} target="_blank" rel="noreferrer">View photo</a> : 'Not added'}</dd></div>
+              </dl>
+              {r.status === 'pending' ? (
+                <div className="ad-rreq-actions">
+                  <button className="ad-btn ghost danger" disabled={busy === r.id} onClick={() => decide(r, false)}><X size={16} /> Reject</button>
+                  <button className="ad-btn" disabled={busy === r.id} onClick={() => decide(r, true)}><Check size={16} /> Approve</button>
+                </div>
+              ) : (
+                <p className="ad-muted ad-small">{r.status === 'active' ? 'Approved. They got an SMS and can log in with their number.' : 'Rejected. They got an SMS.'}</p>
+              )}
+            </section>
+          )
+        })}
+      </div>
+    </>
+  )
+}
+
 export default function Staff() {
   const [items, setItems]     = useState(null)
   const [error, setError]     = useState('')
   const [editing, setEditing] = useState(null)
 
+  const [tab, setTab]         = useState('team')
+  const [reqs, setReqs]       = useState([])
+
   const load = useCallback(() => api.get('/api/admin/staff').then(setItems).catch(e => setError(e.message)), [])
-  useEffect(() => { load() }, [load])
+  const loadReqs = useCallback(() => api.get('/api/admin/rider-requests').then(setReqs).catch(() => {}), [])
+  useEffect(() => { load(); loadReqs() }, [load, loadReqs])
+  const pending = reqs.filter(r => r.status === 'pending').length
+  const onDecided = (r) => setReqs(xs => xs.map(x => x.id === r.id ? r : x))
 
   const onSaved = (s, wasEdit) => { setItems(xs => wasEdit ? xs.map(x => x.id === s.id ? s : x) : [s, ...xs]); setEditing(null) }
   const toggle = async (s) => {
@@ -79,11 +135,15 @@ export default function Staff() {
 
   return (
     <>
-      <PageHead title="Staff" sub="People working at your store. Delivery staff get a login for the delivery app so customers can track them live.">
+      <PageHead title="Staff" sub="People working at your store, and delivery partners who asked to join. Everyone logs in with their mobile number.">
         <button className="ad-btn" onClick={() => setEditing({})}><Plus size={16} /> Add staff</button>
       </PageHead>
+      <div className="ad-tabs" role="tablist">
+        <button role="tab" aria-selected={tab === 'team'} className={`ad-tab ${tab === 'team' ? 'on' : ''}`} onClick={() => setTab('team')}>Our team{items && <span className="ad-tab-n">{items.length}</span>}</button>
+        <button role="tab" aria-selected={tab === 'req'} className={`ad-tab ${tab === 'req' ? 'on' : ''}`} onClick={() => setTab('req')}>New delivery partners{pending > 0 && <span className="ad-tab-n hot">{pending}</span>}</button>
+      </div>
       <ErrorNote>{error}</ErrorNote>
-      {!items ? <p className="ad-muted">Loading…</p> : items.length === 0 ? (
+      {tab === 'req' ? <RiderRequests items={reqs} onDecided={onDecided} /> : !items ? <p className="ad-muted">Loading…</p> : items.length === 0 ? (
         <Empty icon={Users} title="No staff added yet" text="Add the people who pick and pack orders at your store." />
       ) : (
         <div className="ad-card flush">

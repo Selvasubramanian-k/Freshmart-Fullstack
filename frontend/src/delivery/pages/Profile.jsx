@@ -25,7 +25,7 @@ export default function Profile() {
       </header>
       <section className="rd-card">
         <div className="rd-line"><span>Mobile</span><b>+91 {user?.phone}</b></div>
-        <div className="rd-line"><span>Email</span><b>{user?.email}</b></div>
+        {user?.email && <div className="rd-line"><span>Email</span><b>{user.email}</b></div>}
         <div className="rd-line"><span>Vehicle</span><b>{VEHICLE[user?.vehicle?.type] || '—'} {user?.vehicle?.number}</b></div>
         <div className="rd-line"><span>Status</span><b className={me?.is_online ? 'ok' : ''}>{me?.is_online ? 'Online' : 'Offline'}</b></div>
       </section>

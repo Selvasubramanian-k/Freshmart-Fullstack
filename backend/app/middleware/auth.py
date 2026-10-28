@@ -22,6 +22,8 @@ async def get_current_user(
     user = await get_db().users.find_one({"_id": ObjectId(payload["sub"])})
     if not user or not user.get("is_active", True):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "User not found or disabled")
+    if user.get("status", "active") != "active":
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Your account is waiting for approval")
     return serialize(user)
 
 

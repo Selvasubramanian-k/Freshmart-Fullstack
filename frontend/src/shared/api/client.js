@@ -77,5 +77,9 @@ export const api = {
   put:    (p, b) => request('PUT', p, b),
   patch:  (p, b) => request('PATCH', p, b),
   del:    (p)    => request('DELETE', p),
-  upload: (p, file) => { const f = new FormData(); f.append('file', file); return request('POST', p, f, { isForm: true }) },
+  upload: (p, file, fields = {}) => {
+    const f = new FormData(); f.append('file', file)
+    for (const [k, v] of Object.entries(fields)) f.append(k, v)
+    return request('POST', p, f, { isForm: true })
+  },
 }

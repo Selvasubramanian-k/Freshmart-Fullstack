@@ -493,3 +493,22 @@ textarea.ad-input { resize: vertical; }
 
 a.ad-btn, a.ad-linkbtn { text-decoration: none; }
 a.ad-linkbtn:hover { text-decoration: underline; }
+
+/* Staff: delivery partner requests */
+.ad-tab-n.hot { background: #f59e0b; color: #14201b; }
+.ad-req-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 14px; }
+.ad-rreq { display: flex; flex-direction: column; gap: 14px; }
+.ad-rreq.pending { border: 1.5px solid #f5c58a; }
+.ad-rreq-head { display: flex; align-items: center; gap: 12px; }
+.ad-rreq-head > div { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ad-rreq-av { width: 46px; height: 46px; border-radius: 50%; background: #fff3e6; color: #9a4a00; display: grid; place-items: center; font-weight: 800; font-size: 18px; flex: none; }
+.ad-rreq-pill { font-size: 11.5px; font-weight: 800; border-radius: 999px; padding: 3px 10px; background: #fff0d6; color: #9a4a00; }
+.ad-rreq-pill.active { background: #e6f4ee; color: #005c3c; }
+.ad-rreq-pill.rejected { background: #fdecea; color: #b42318; }
+.ad-rreq-facts { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; font-size: 13px; }
+.ad-rreq-facts dt { color: var(--muted); }
+.ad-rreq-facts dd { margin: 2px 0 0; font-weight: 700; }
+.ad-rreq-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.ad-btn.ghost.danger { color: #b42318; border-color: #f3c2bc; }
+@media (max-width: 560px) { .ad-req-grid { grid-template-columns: 1fr; } }
+.ad-nav-badge { margin-left: auto; min-width: 22px; height: 22px; padding: 0 7px; border-radius: 999px; background: #f59e0b; color: #14201b; font-size: 12px; font-weight: 800; display: inline-grid; place-items: center; }

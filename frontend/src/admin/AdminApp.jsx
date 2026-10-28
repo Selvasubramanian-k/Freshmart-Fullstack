@@ -40,6 +40,14 @@ export default function AdminApp() {
 
   const loadStore = useCallback(() => api.get('/api/admin/store').then(setStore).catch(() => {}), [])
   useEffect(() => { loadStore() }, [loadStore])
+  // new delivery partner requests -> small badge on Staff
+  const [riderReqs, setRiderReqs] = useState(0)
+  useEffect(() => {
+    const check = () => api.get('/api/admin/rider-requests').then(r => setRiderReqs(r.length)).catch(() => {})
+    check()
+    const t = setInterval(check, 60000)
+    return () => clearInterval(t)
+  }, [])
 
   const toggleOpen = async () => {
     if (!store) return
@@ -67,13 +75,14 @@ export default function AdminApp() {
           {NAV.map(({ to, label, icon: Icon, end }) => (
             <NavLink key={to} to={to} end={end} onClick={() => setNav(false)} className={({ isActive }) => `ad-nav-link ${isActive ? 'active' : ''}`}>
               <Icon size={18} /> {label}
+              {to === '/admin/staff' && riderReqs > 0 && <span className="ad-nav-badge" aria-label={`${riderReqs} new requests`}>{riderReqs}</span>}
             </NavLink>
           ))}
         </nav>
         <div className="ad-side-foot">
           <div className="ad-me">
             <span className="ad-me-av">{(user?.name || 'A').charAt(0).toUpperCase()}</span>
-            <div><b>{user?.name}</b><span>{user?.email}</span></div>
+            <div><b>{user?.name}</b><span>{user?.email || (user?.phone ? `+91 ${user.phone}` : '')}</span></div>
           </div>
           <button className="ad-logout" onClick={doLogout}><LogOut size={16} /> Log out</button>
         </div>

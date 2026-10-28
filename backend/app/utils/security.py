@@ -33,3 +33,21 @@ def decode_access_token(token: str) -> dict | None:
         return jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
     except jwt.PyJWTError:
         return None
+
+
+SIGNUP_TOKEN_MINUTES = 20
+
+
+def create_signup_token(phone: str) -> str:
+    """Short-lived proof that this phone number passed the OTP check (used to finish sign-up)."""
+    payload = {"sub": phone, "purpose": "signup", "iat": now_utc(),
+               "exp": now_utc() + timedelta(minutes=SIGNUP_TOKEN_MINUTES)}
+    return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+
+
+def decode_signup_token(token: str) -> str | None:
+    """Returns the verified phone number, or None."""
+    data = decode_access_token(token)
+    if not data or data.get("purpose") != "signup":
+        return None
+    return data.get("sub")

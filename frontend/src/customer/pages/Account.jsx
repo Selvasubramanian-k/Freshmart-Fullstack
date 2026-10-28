@@ -374,7 +374,7 @@ export default function Account({ user, orders, increment, onLogout, onOpenCart,
                 <label className="acc-muted" htmlFor="pf-phone">Mobile number</label>
                 <input id="pf-phone" className="acc-input" inputMode="numeric" value={profile.phone}
                   onChange={(e) => setProfile(p => ({ ...p, phone: e.target.value.replace(/\D/g, '').slice(0, 10) }))} />
-                <div className="acc-row"><span className="acc-muted">Email</span><b>{user?.email}</b></div>
+                <div className="acc-row"><span className="acc-muted">Email</span><b>{user?.email || 'Not added'}</b></div>
                 <div className="acc-row"><span className="acc-muted">Orders placed</span><b>{orders.length}</b></div>
                 {profileMsg && <p className="acc-msg">{profileMsg}</p>}
                 <button type="submit" className="acc-primary">Save changes</button>

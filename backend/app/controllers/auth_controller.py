@@ -63,10 +63,12 @@ async def register(data: RegisterRequest) -> dict:
 
 async def login(data: LoginRequest) -> dict:
     user = await get_db().users.find_one({"email": data.email.lower()})
-    if not user or not verify_password(data.password, user["password_hash"]):
+    if not user or not user.get("password_hash") or not verify_password(data.password, user["password_hash"]):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid email or password")
     if not user.get("is_active", True):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Your account is disabled")
+    if user.get("status", "active") != "active":
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Your account is waiting for approval")
     return _auth_response(user)
 
 

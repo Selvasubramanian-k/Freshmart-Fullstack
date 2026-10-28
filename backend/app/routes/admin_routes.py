@@ -6,13 +6,14 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 
 from app.controllers import (
-    category_controller, complaint_controller, dashboard_controller, delivery_controller, order_controller, product_controller,
+    category_controller, complaint_controller, dashboard_controller, onboarding_controller, delivery_controller, order_controller, product_controller,
     sales_controller, staff_controller, store_controller,
 )
 from app.middleware.auth import require_admin
 from app.models.category import CategoryCreate, CategoryUpdate
 from app.models.complaint import ComplaintRespond
 from app.models.delivery import AssignRequest
+from app.models.onboarding import RequestDecision
 from app.models.order import OrderStatusUpdate
 from app.models.product import ProductCreate, ProductUpdate, StockUpdate
 from app.models.sale import SaleCreate
@@ -152,6 +153,22 @@ async def create_sale(data: SaleCreate, user: dict = Depends(require_admin)):
 async def list_sales(date_from: datetime | None = None, date_to: datetime | None = None, limit: int = 50,
                      user: dict = Depends(require_admin)):
     return await sales_controller.list_sales(user, date_from, date_to, max(1, min(limit, 500)))
+
+
+# ---------- Delivery partner requests (joined from the app, waiting for approval) ----------
+@router.get("/rider-requests")
+async def rider_requests(all: bool = False):
+    return await onboarding_controller.rider_requests(include_done=all)
+
+
+@router.post("/rider-requests/{rider_id}/approve")
+async def approve_rider(rider_id: str, data: RequestDecision | None = None, user: dict = Depends(require_admin)):
+    return await onboarding_controller.decide_rider(user, rider_id, True, data.note if data else None)
+
+
+@router.post("/rider-requests/{rider_id}/reject")
+async def reject_rider(rider_id: str, data: RequestDecision | None = None, user: dict = Depends(require_admin)):
+    return await onboarding_controller.decide_rider(user, rider_id, False, data.note if data else None)
 
 
 # ---------- Staff ----------
