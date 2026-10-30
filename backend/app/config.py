@@ -29,11 +29,18 @@ class Settings(BaseSettings):
     SMS_API_KEY: str = ""
     SMS_TEMPLATE_ID: str = ""
 
+    # FreshMart owner (super admin): mobile numbers, comma separated. These numbers open the owner panel.
+    SUPER_ADMIN_PHONES: str = ""
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
+
+    @property
+    def super_admin_phones(self) -> set[str]:
+        return {p.strip()[-10:] for p in self.SUPER_ADMIN_PHONES.split(",") if p.strip()}
 
 
 settings = Settings()

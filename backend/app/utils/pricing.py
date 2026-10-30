@@ -2,7 +2,9 @@
 but the backend is the source of truth: the total is always recomputed here."""
 
 DELIVERY_FEE = 5.0
-COUPONS = {"FRESH20": {"off": 20.0, "min": 100.0}}
+# Coupons live in the `coupons` collection (FreshMart owner -> Areas & offers). FRESH20 is added once on start.
+DEFAULT_COUPON = {"code": "FRESH20", "title": "₹20 off your order", "kind": "flat", "value": 20.0,
+                  "max_off": None, "min_order": 100.0, "active": True, "used": 0}
 
 # type: pct (percent off, capped) | flat (rupees off) | cashback (credited later, price same)
 METHOD_OFFERS = {
@@ -27,17 +29,32 @@ def method_offer(method: str, base: float) -> tuple[float, float]:
     return 0.0, 0.0
 
 
-def validate_coupon(code: str | None, subtotal: float) -> tuple[str | None, float]:
+def coupon_discount(rule: dict, subtotal: float) -> float:
+    if rule.get("kind") == "pct":
+        off = subtotal * float(rule["value"]) / 100
+        if rule.get("max_off"):
+            off = min(off, float(rule["max_off"]))
+    else:
+        off = float(rule["value"])
+    return round(min(off, subtotal), 2)
+
+
+async def validate_coupon(code: str | None, subtotal: float) -> tuple[str | None, float]:
     """Returns (normalised code, discount). Raises ValueError for a bad coupon."""
+    from app.database import get_db
+    from app.utils.helpers import now_utc
     if not code:
         return None, 0.0
     code = code.strip().upper()
-    rule = COUPONS.get(code)
+    rule = await get_db().coupons.find_one({"code": code, "active": True})
     if not rule:
         raise ValueError("That coupon code is not valid")
-    if subtotal < rule["min"]:
-        raise ValueError(f"Coupon needs a minimum order of ₹{rule['min']:.0f}")
-    return code, rule["off"]
+    ends = rule.get("ends_at")
+    if ends and (ends if ends.tzinfo else ends.replace(tzinfo=now_utc().tzinfo)) < now_utc():
+        raise ValueError("This coupon has ended")
+    if subtotal < float(rule.get("min_order") or 0):
+        raise ValueError(f"Coupon needs a minimum order of ₹{float(rule['min_order']):.0f}")
+    return code, coupon_discount(rule, subtotal)
 
 
 def compute_bill(subtotal: float, method: str, tip: float, coupon_off: float) -> dict:

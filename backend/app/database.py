@@ -18,6 +18,10 @@ async def connect_db() -> None:
     await create_indexes()
     from app.controllers.category_controller import seed_defaults  # late import: avoids a cycle
     await seed_defaults()
+    from app.utils.helpers import now_utc
+    from app.utils.pricing import DEFAULT_COUPON
+    await db_state.db.coupons.update_one({"code": DEFAULT_COUPON["code"]},
+                                         {"$setOnInsert": {**DEFAULT_COUPON, "created_at": now_utc()}}, upsert=True)
     print(f"[db] Connected to MongoDB -> {settings.DB_NAME}")
 
 
@@ -54,3 +58,7 @@ async def create_indexes() -> None:
     await db.store_sales.create_index([("store_id", ASCENDING), ("created_at", DESCENDING)])
     await db.orders.create_index([("status", ASCENDING), ("partner", ASCENDING)])
     await db.orders.create_index([("partner.id", ASCENDING), ("delivered_at", DESCENDING)])
+    await db.orders.create_index([("created_at", DESCENDING)])
+    await db.coupons.create_index([("code", ASCENDING)], unique=True)
+    await db.complaints.create_index([("status", ASCENDING), ("created_at", DESCENDING)])
+    await db.users.create_index([("role", ASCENDING)])

@@ -254,7 +254,6 @@ function Navbar({ onCartClick, cartCount, onSearch, user, onLogout, activeCat, o
         <div className="right-drawer-avatar"><p>Profile picture</p><AvatarPicker user={user} compact /></div>
 
         <div className="right-drawer-btns">
-          <button className="btn-seller" onClick={() => { handleLogout(); navigate('/join/store') }}>Become a Seller</button>
           <button className="btn-logout" onClick={handleLogout}><Icon name="log-out" /> Logout</button>
         </div>
       </div>

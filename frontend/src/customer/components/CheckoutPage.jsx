@@ -4,15 +4,15 @@ import ProductImage from './ProductImage.jsx'
 import Icon from './Icon.jsx'
 import { readAddrs, saveAddrs } from '../utils/addresses.js'
 import PlacingOrder from './PlacingOrder.jsx'
+import { useAuth } from '../../shared/context/AuthContext.jsx'
+import { api } from '../../shared/api/client.js'
 
 // ─────────────────────────────────────────────────────────────
 //  Timeline checkout: Address -> Time & tip -> Payment (slide to pay)
 //  Offers below are shown in the UI; backend (app/utils/pricing.py) same rules la total ah
 //  thirumba calculate pannum. Maathanum na rendu edathulayum maathunga.
 // ─────────────────────────────────────────────────────────────
-const COUPON_CODE = 'FRESH20'
-const COUPON_OFF  = 20
-const COUPON_MIN  = 100
+// Coupons come from the FreshMart owner panel (Areas & offers); the backend checks them again at order time.
 
 // type: 'pct' (percent off, capped) | 'flat' (rupees off) | 'cashback' (comes later, price same)
 // Payment logos: src/assets/pay/<id>.png|svg|webp (gpay, phonepe, paytm, bhim) irundha adha kaattum, illaina letter fallback.
@@ -83,9 +83,15 @@ function CheckoutPage({ cart, user, onBack, onPlaceOrder, increment, decrement }
   const [bank, setBank]         = useState('')
   const [card, setCard]         = useState({ no: '', name: '', exp: '', cvv: '' })
   const [couponText, setCouponText] = useState('')
-  const [coupon, setCoupon]     = useState(false)
+  const [coupon, setCoupon]     = useState(null)     // { code, off }
+  const [offers, setOffers]     = useState([])
+  const [checking, setChecking] = useState(false)
   const [slide, setSlide]       = useState(0)
   const [placing, setPlacing]   = useState(false)
+  // login la name ketkala -> mudhal order la mattum ketpom
+  const { updateProfile } = useAuth()
+  const needName = !user?.name?.trim()
+  const [myName, setMyName]     = useState('')
   const placedRef               = useRef(false)   // double submit aagaama thadukka
   const snapRef                 = useRef(0)       // (hooks early return ku mela irukkanum)
 
@@ -93,16 +99,34 @@ function CheckoutPage({ cart, user, onBack, onPlaceOrder, increment, decrement }
 
   const entries  = Object.entries(cart).filter(([, q]) => q > 0)
   const subtotal = entries.reduce((s, [id, q]) => s + (getProduct(id)?.price || 0) * q, 0)
+  useEffect(() => { api.get('/api/coupons').then(setOffers).catch(() => {}) }, [])
+  // cart changed after a coupon was applied -> check it again (min order / % off)
+  const couponCode = coupon?.code
+  useEffect(() => {
+    if (!couponCode) return
+    api.get(`/api/coupons/check?code=${couponCode}&subtotal=${subtotal}`)
+      .then((c) => setCoupon((old) => (old && old.off === c.off ? old : c)))
+      .catch((e) => { setCoupon(null); setError(e.message) })
+  }, [subtotal, couponCode])
   const count    = entries.reduce((s, [, q]) => s + q, 0)
 
   const method      = PAY_METHODS.find(m => m.id === methodId)
-  const couponOff   = coupon ? COUPON_OFF : 0
+  const couponOff   = coupon ? coupon.off : 0
   const base        = subtotal + DELIVERY - couponOff
   const { off: methodOff, cashback } = methodOffer(method, base)
   const total       = Math.max(0, base + tip - methodOff)
   const isCOD       = methodId === 'cod'
 
   const addr = saved.find(a => a.id === addrId)
+
+  const applyCoupon = async (code) => {
+    setError('')
+    if (!code.trim()) { setError('Type a coupon code.'); return }
+    setChecking(true)
+    try { setCoupon(await api.get(`/api/coupons/check?code=${encodeURIComponent(code.trim())}&subtotal=${subtotal}`)) }
+    catch (e) { setError(e.message) }
+    finally { setChecking(false) }
+  }
   const slotInfo = SLOTS.find(s => s.id === slot)
   const instrList = INSTRUCTIONS.filter((_, i) => instr[i])
 
@@ -120,8 +144,12 @@ function CheckoutPage({ cart, user, onBack, onPlaceOrder, increment, decrement }
   }
 
   // ── step 1: address ──
-  const submitAddress = () => {
+  const submitAddress = async () => {
     setError('')
+    if (needName) {
+      if (myName.trim().length < 2) { setError('Please enter your name, so the rider knows who to ask for.'); return }
+      try { await updateProfile({ name: myName.trim() }) } catch (e) { setError(e.message); return }
+    }
     if (addrId === 'new') {
       if (!newAddr.text.trim()) { setError('Please enter your delivery address.'); return }
       const entry = { id: Date.now(), label: newAddr.label, text: newAddr.text.trim(),
@@ -189,7 +217,7 @@ function CheckoutPage({ cart, user, onBack, onPlaceOrder, increment, decrement }
       slot,
       tip,
       payment_method: methodId,
-      coupon_code: coupon ? COUPON_CODE : null,
+      coupon_code: coupon ? coupon.code : null,
       bank: methodId === 'nb' ? bank : null,
       card: methodId === 'card' ? { last4: cardDigits.slice(-4), name: card.name.trim() } : null,
     }).catch((err) => {
@@ -208,7 +236,7 @@ function CheckoutPage({ cart, user, onBack, onPlaceOrder, increment, decrement }
       <div className="ck-tr"><span>Subtotal</span><span>{rs(subtotal)}</span></div>
       <div className="ck-tr"><span>Delivery</span><span>{rs(DELIVERY)}</span></div>
       {tip > 0 && <div className="ck-tr"><span>Delivery partner tip</span><span>{rs(tip)}</span></div>}
-      {couponOff > 0 && <div className="ck-tr good"><span>Coupon {COUPON_CODE}</span><span>−{rs(couponOff)}</span></div>}
+      {couponOff > 0 && <div className="ck-tr good"><span>Coupon {coupon?.code}</span><span>−{rs(couponOff)}</span></div>}
       {methodOff > 0 && <div className="ck-tr good"><span>{method.name} offer</span><span>−{rs(methodOff)}</span></div>}
       {cashback > 0 && <div className="ck-tr good"><span>Cashback later</span><span>{rs(cashback)}</span></div>}
       <div className="ck-tr total"><span>To pay</span><span>{rs(total)}</span></div>
@@ -281,6 +309,13 @@ function CheckoutPage({ cart, user, onBack, onPlaceOrder, increment, decrement }
 
         {step === 1 && (
           <div className="ck-body">
+            {needName && (
+              <div className="ck-newaddr" style={{ marginBottom: 14 }}>
+                <label className="ck-lab" htmlFor="ck-name">Your name</label>
+                <input id="ck-name" className="ck-input" autoComplete="name" placeholder="e.g. Priya" value={myName}
+                  onChange={(e) => { setMyName(e.target.value); setError('') }} />
+              </div>
+            )}
             <div className="ck-addrs">
               {saved.map(a => (
                 <button key={a.id} className={`ck-addr ${addrId === a.id ? 'on' : ''}`} onClick={() => setAddrId(a.id)}>
@@ -464,22 +499,23 @@ function CheckoutPage({ cart, user, onBack, onPlaceOrder, increment, decrement }
                 className="ck-input"
                 placeholder="Coupon code"
                 aria-label="Coupon code"
-                value={coupon ? COUPON_CODE : couponText}
-                disabled={coupon}
-                onChange={(e) => setCouponText(e.target.value)}
+                value={coupon ? coupon.code : couponText}
+                disabled={Boolean(coupon) || checking}
+                onChange={(e) => setCouponText(e.target.value.toUpperCase())}
               />
               <button
                 className="ck-btn ghost sm"
-                onClick={() => {
-                  setError('')
-                  if (coupon) { setCoupon(false); setCouponText(''); return }
-                  if (couponText.trim().toUpperCase() !== COUPON_CODE) { setError('That coupon code is not valid.'); return }
-                  if (subtotal < COUPON_MIN) { setError(`Coupon needs a minimum order of ₹${COUPON_MIN}.`); return }
-                  setCoupon(true)
-                }}
-              >{coupon ? 'Remove' : 'Apply'}</button>
+                disabled={checking}
+                onClick={() => (coupon ? (setCoupon(null), setCouponText('')) : applyCoupon(couponText))}
+              >{coupon ? 'Remove' : checking ? 'Checking…' : 'Apply'}</button>
             </div>
-            {!coupon && <div className="ck-hintrow"><span className="ck-badge">{COUPON_CODE} saves ₹{COUPON_OFF}</span></div>}
+            {!coupon && offers.length > 0 && (
+              <div className="ck-hintrow">
+                {offers.slice(0, 3).map((o) => (
+                  <button key={o.code} type="button" className="ck-badge" style={{ border: 0, cursor: 'pointer' }} onClick={() => applyCoupon(o.code)}>{o.code} · {o.title}</button>
+                ))}
+              </div>
+            )}
 
             <div className="ck-bill boxed">{billRows}</div>
 

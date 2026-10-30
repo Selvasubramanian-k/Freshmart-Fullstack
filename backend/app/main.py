@@ -9,7 +9,8 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
 from app.database import close_db, connect_db
-from app.routes import admin_routes, auth_routes, customer_routes, delivery_routes, public_routes
+from app.routes import (admin_routes, auth_routes, customer_routes, delivery_routes, owner_routes, picker_routes,
+                        public_routes, support_routes)
 
 UPLOAD_DIR = Path(__file__).resolve().parents[1] / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
@@ -62,6 +63,9 @@ app.include_router(public_routes.router)
 app.include_router(customer_routes.router)
 app.include_router(admin_routes.router)
 app.include_router(delivery_routes.router)
+app.include_router(owner_routes.router)
+app.include_router(support_routes.router)
+app.include_router(picker_routes.router)
 
 
 @app.get("/api/health", tags=["Health"])

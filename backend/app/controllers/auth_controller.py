@@ -1,10 +1,9 @@
 from bson import ObjectId
 from fastapi import HTTPException, status
-from pymongo.errors import DuplicateKeyError
 
 from app.database import get_db
-from app.models.user import ChangePassword, LoginRequest, ProfileUpdate, RegisterRequest, Role
-from app.utils.helpers import now_utc, serialize
+from app.models.user import ChangePassword, LoginRequest, ProfileUpdate
+from app.utils.helpers import serialize
 from app.utils.security import create_access_token, hash_password, verify_password
 
 
@@ -15,50 +14,6 @@ def _auth_response(user: dict) -> dict:
         "token_type": "bearer",
         "user": user,
     }
-
-
-async def register(data: RegisterRequest) -> dict:
-    db = get_db()
-    email = data.email.lower()
-    if await db.users.find_one({"email": email}):
-        raise HTTPException(status.HTTP_409_CONFLICT, "Email is already registered")
-
-    user_doc = {
-        "name": data.name.strip(),
-        "email": email,
-        "phone": data.phone,
-        "role": data.role.value,
-        "password_hash": hash_password(data.password),
-        "is_active": True,
-        "created_at": now_utc(),
-    }
-    if data.role == Role.CUSTOMER:
-        user_doc["address"] = data.address.model_dump()
-    if data.role == Role.DELIVERY:
-        user_doc["vehicle"] = {"type": data.vehicle.type.value, "number": data.vehicle.number.strip().upper()}
-        user_doc["city"] = (data.city or "").strip()
-        user_doc["is_online"] = False
-        user_doc["active_order_id"] = None
-        user_doc["location"] = None
-
-    try:
-        result = await db.users.insert_one(user_doc)
-    except DuplicateKeyError:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Email is already registered")
-    user_doc["_id"] = result.inserted_id
-
-    if data.role == Role.ADMIN:
-        store_doc = {
-            **data.store.model_dump(),
-            "owner_id": result.inserted_id,
-            "is_open": True,
-            "created_at": now_utc(),
-        }
-        store_res = await db.stores.insert_one(store_doc)
-        await db.users.update_one({"_id": result.inserted_id}, {"$set": {"store_id": store_res.inserted_id}})
-        user_doc["store_id"] = store_res.inserted_id
-
-    return _auth_response(user_doc)
 
 
 async def login(data: LoginRequest) -> dict:

@@ -12,7 +12,9 @@ class Role(str, Enum):
     CUSTOMER = "customer"
     ADMIN = "admin"        # Shop Owner / Store Admin
     DELIVERY = "delivery"  # Delivery Partner
-    # Future roles: super_admin, picker, support
+    SUPERADMIN = "superadmin"  # FreshMart owner: all stores, commission, areas, offers
+    PICKER = "picker"          # store staff who picks + packs orders
+    SUPPORT = "support"        # customer support / operations team (all stores)
 
 
 class VehicleType(str, Enum):

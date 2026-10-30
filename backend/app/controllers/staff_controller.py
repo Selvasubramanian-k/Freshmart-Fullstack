@@ -40,6 +40,15 @@ async def add_staff(admin: dict, data: StaffCreate) -> dict:
             user["password_hash"] = hash_password(data.password)
         u = await db.users.insert_one(user)
         doc.update({"user_id": u.inserted_id})
+    elif data.role.value in ("picker", "packer"):
+        # picks + packs orders in the picker app (same OTP login)
+        if await db.users.find_one({"phone": data.phone, "role": "picker"}):
+            raise HTTPException(status.HTTP_409_CONFLICT, "A picker with this phone number already exists")
+        u = await db.users.insert_one({
+            "name": data.name, "phone": data.phone, "role": "picker", "status": "active", "login": "otp",
+            "store_id": store["_id"], "in_house": True, "is_active": True, "created_at": now_utc(),
+        })
+        doc.update({"user_id": u.inserted_id})
 
     res = await db.staff.insert_one(doc)
     doc["_id"] = res.inserted_id

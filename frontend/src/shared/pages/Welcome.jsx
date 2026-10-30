@@ -48,8 +48,9 @@ function CustomerWelcome({ user, isNew }) {
       <div className="wl-cust-in">
         <div className="wl-brand"><span className="wl-mark light">{BAG}</span><b>FreshMart</b></div>
         <div className="wl-hi">
-          <span>{isNew ? 'Vanakkam,' : 'Welcome back,'}</span>
-          <h1>{first(user.name)}!</h1>
+          {user.name?.trim()
+            ? <><span>{isNew ? 'Vanakkam,' : 'Welcome back,'}</span><h1>{first(user.name)}!</h1></>
+            : <><span>{isNew ? 'Vanakkam!' : 'Welcome back!'}</span><h1>Welcome to FreshMart</h1></>}
           <p>{isNew ? <>Fresh groceries at your door in <b>10 minutes</b>.</> : 'Good to see you again.'}</p>
         </div>
         <div className="wl-cards">
@@ -222,6 +223,7 @@ export default function Welcome() {
   if (loading) return <FullPageLoader />
   if (!user) return <Navigate to="/login" replace />
   if (!state?.fresh) return <Navigate to={homeFor(user.role)} replace />
+  if (['superadmin', 'picker', 'support'].includes(user.role)) return <Navigate to={homeFor(user.role)} replace />
   if (user.role === 'admin') return <AdminWelcome user={user} />
   if (user.role === 'delivery') return <RiderWelcome user={user} />
   return <CustomerWelcome user={user} isNew={Boolean(state.isNew)} />

@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 
 // ─────────────────────────────────────────────────────────────
 //  Login / sign-up layout (ellaa role kum ore URL).
-//  Phone: `front` step la full-screen front page, matha steps la form mattum.
+//  login : phone la mela chinna mint header (logo + koodai), keezha white card la login.
 //  Laptop: left = FreshMart brand panel (eppovum), right = step content.
 // ─────────────────────────────────────────────────────────────
 
@@ -37,13 +37,14 @@ export function Basket() {
 }
 
 /**
+ * login    : true -> phone shows a small brand header above the card (the one login page)
  * front    : true -> phone shows the full front page (children hidden), laptop shows children on the right
  * onStart  : "Get started" on the phone front page
- * footer   : small line under the phone front page button (eg. join link)
+ * footer   : small line under the phone front page button
  */
-export default function AuthLayout({ front = false, onStart, footer, children }) {
+export default function AuthLayout({ login = false, front = false, onStart, footer, children }) {
   return (
-    <div className={`au ${front ? 'is-front' : ''}`}>
+    <div className={`au ${front ? 'is-front' : ''} ${login ? 'is-login' : ''}`}>
       <aside className="au-brand">
         <span className="au-blob" aria-hidden="true" />
         <Logo />

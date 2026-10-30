@@ -1,6 +1,6 @@
 import { BackLink } from './AuthLayout.jsx'
 
-// Store owner / delivery partner sign-up: waiting for approval (or not accepted)
+// Old store owner / delivery partner request (made before invite-only): waiting or not accepted
 const WHO = { admin: 'store', delivery: 'delivery partner request' }
 
 export default function StatusScreen({ status, role, name, note, onBack }) {

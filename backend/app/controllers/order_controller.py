@@ -5,9 +5,9 @@ from datetime import timedelta
 from bson import ObjectId
 from fastapi import HTTPException, status
 
-from app.config import settings
 from app.controllers.store_controller import get_admin_store_doc
 from app.database import get_db
+from app.utils.platform import commission_pct
 from app.models.order import (
     ALLOWED_TRANSITIONS, CUSTOMER_CANCELLABLE, CancelRequest, OrderCreate, OrderStatusUpdate,
 )
@@ -66,7 +66,7 @@ async def place_order(customer: dict, data: OrderCreate) -> dict:
 
     subtotal = sum(found[pid]["price"] * qty for pid, qty in qty_by_pid.items())
     try:
-        coupon_code, coupon_off = validate_coupon(data.coupon_code, subtotal)
+        coupon_code, coupon_off = await validate_coupon(data.coupon_code, subtotal)
     except ValueError as e:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
     if data.payment_method.value == "nb" and not data.bank:
@@ -129,7 +129,7 @@ async def place_order(customer: dict, data: OrderCreate) -> dict:
             "order_number": group_id if len(store_list) == 1 else f"{group_id}-{i + 1}",
             "group_id": group_id,
             "customer_id": ObjectId(customer["id"]),
-            "customer_name": customer["name"],
+            "customer_name": customer.get("name") or "Customer",
             "customer_phone": customer.get("phone"),
             "store_id": sid,
             "store_name": stores[sid]["name"],
@@ -152,6 +152,8 @@ async def place_order(customer: dict, data: OrderCreate) -> dict:
         doc["_id"] = res.inserted_id
         orders.append(serialize(doc))
 
+    if coupon_code:
+        await db.coupons.update_one({"code": coupon_code}, {"$inc": {"used": 1}})
     return {"group_id": group_id, "bill": bill, "orders": orders}
 
 
@@ -266,7 +268,7 @@ async def update_order_status(admin: dict, order_id: str, data: OrderStatusUpdat
 async def store_earnings(admin: dict, days: int = 7) -> dict:
     store = await get_admin_store_doc(admin)
     db = get_db()
-    pct = settings.PLATFORM_COMMISSION_PERCENT
+    pct = commission_pct(store)
     delivered = await db.orders.find({"store_id": store["_id"], "status": "delivered"}).to_list(None)
 
     gross = round(sum(o["bill"]["subtotal"] for o in delivered), 2)

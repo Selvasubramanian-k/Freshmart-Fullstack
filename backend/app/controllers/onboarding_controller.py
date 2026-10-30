@@ -1,11 +1,15 @@
-"""Mobile OTP login for every role + sign-up for new numbers.
+"""Mobile OTP login for every role.
 
 Flow:  send OTP -> verify OTP
-  - number belongs to an active account  -> logged in (token), frontend opens that role's welcome page
-  - store owner / rider still waiting     -> status "pending" (no token)
-  - new number                            -> signup_token; frontend asks the name (customer)
-                                             or the store / rider form, then calls a signup endpoint
-Store owners and delivery partners start as "pending" until approved.
+  - number belongs to an active account -> logged in, frontend opens that role's welcome page
+  - new number                          -> a customer account is made right away (no questions);
+                                           name + address are asked at checkout
+Store owners and delivery partners never sign up from the app:
+  - delivery partners are added by the store admin (Staff -> Add staff -> Delivery)
+  - store owners are added by the FreshMart owner (owner panel -> Stores -> Add store)
+  - pickers by the store admin (Staff), support agents by the owner (Support team)
+  - the owner = numbers in SUPER_ADMIN_PHONES
+"pending" / "rejected" is only for old requests made before this change.
 """
 import hashlib
 import hmac
@@ -13,17 +17,16 @@ import secrets
 from datetime import timedelta, timezone
 
 from bson import ObjectId
-from fastapi import HTTPException, UploadFile, status
+from fastapi import HTTPException, status
 
 from app.config import settings
 from app.database import get_db
-from app.models.onboarding import CustomerSignup, OtpSend, OtpVerify, RiderSignup, StoreSignup
+from app.models.onboarding import OtpSend, OtpVerify
 from app.utils import sms
 from app.utils.helpers import now_utc, serialize, to_object_id
-from app.utils.security import create_access_token, create_signup_token, decode_signup_token
-from app.utils.uploads import save_image
+from app.utils.security import create_access_token
 
-ROLE_PRIORITY = {"admin": 0, "delivery": 1, "customer": 2}   # one number on many accounts -> staff account wins
+ROLE_PRIORITY = {"superadmin": 0, "admin": 1, "support": 2, "picker": 3, "delivery": 4, "customer": 5}   # one number on many accounts -> staff account wins
 
 
 def _hash(phone: str, code: str) -> str:
@@ -40,8 +43,10 @@ def _auth(user: dict, is_new: bool = False) -> dict:
             "token_type": "bearer", "user": u}
 
 
-async def _user_by_phone(phone: str) -> dict | None:
-    users = await get_db().users.find({"phone": phone}).to_list(None)
+async def _user_by_phone(phone: str, owner_ok: bool = False) -> dict | None:
+    """Owner (superadmin) account counts only while its number is still in SUPER_ADMIN_PHONES."""
+    q: dict = {"phone": phone} if owner_ok else {"phone": phone, "role": {"$ne": "superadmin"}}
+    users = await get_db().users.find(q).to_list(None)
     if not users:
         return None
     return sorted(users, key=lambda u: ROLE_PRIORITY.get(u.get("role"), 9))[0]
@@ -102,9 +107,17 @@ async def verify_otp(data: OtpVerify) -> dict:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Wrong code. {left} tries left." if left else "Wrong code.")
     await db.otp_codes.delete_one({"_id": doc["_id"]})
 
-    user = await _user_by_phone(data.phone)
-    if not user:
-        return {"status": "new", "signup_token": create_signup_token(data.phone)}
+    if data.phone in settings.super_admin_phones:   # FreshMart owner number (from .env)
+        if not await db.users.find_one({"phone": data.phone, "role": "superadmin"}):
+            await db.users.insert_one({"name": "FreshMart owner", "phone": data.phone, "role": "superadmin",
+                                       "is_active": True, "status": "active", "login": "otp", "created_at": now_utc()})
+    user = await _user_by_phone(data.phone, owner_ok=data.phone in settings.super_admin_phones)
+    if not user:   # new number -> customer account, straight to the shop
+        doc = {"name": "", "phone": data.phone, "role": "customer", "is_active": True, "status": "active",
+               "login": "otp", "created_at": now_utc(), "last_login_at": now_utc()}
+        res = await db.users.insert_one(doc)
+        doc["_id"] = res.inserted_id
+        return _auth(doc, is_new=True)
     st = user.get("status", "active")
     if st == "pending":
         return {"status": "pending", "role": user["role"], "name": user.get("name", "")}
@@ -117,81 +130,7 @@ async def verify_otp(data: OtpVerify) -> dict:
     return _auth(user)
 
 
-# ---------------- Sign-up (after OTP) ----------------
-async def _verified_phone(token: str) -> str:
-    phone = decode_signup_token(token)
-    if not phone:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Your OTP check expired. Please verify your number again.")
-    if await _user_by_phone(phone):
-        raise HTTPException(status.HTTP_409_CONFLICT, "This number already has an account. Please log in.")
-    return phone
-
-
-async def _email_free(email: str | None) -> str | None:
-    if not email:
-        return None
-    email = email.lower()
-    if await get_db().users.find_one({"email": email}):
-        raise HTTPException(status.HTTP_409_CONFLICT, "This email is already used by another account")
-    return email
-
-
-def _base_user(phone: str, name: str, email: str | None, role: str, st: str) -> dict:
-    doc = {"name": " ".join(name.split()), "phone": phone, "role": role, "is_active": True,
-           "status": st, "login": "otp", "created_at": now_utc()}
-    if email:                       # leave the key out when empty (email index is unique + sparse)
-        doc["email"] = email
-    return doc
-
-
-async def signup_customer(data: CustomerSignup) -> dict:
-    phone = await _verified_phone(data.signup_token)
-    doc = _base_user(phone, data.name, await _email_free(data.email), "customer", "active")
-    res = await get_db().users.insert_one(doc)
-    doc["_id"] = res.inserted_id
-    return _auth(doc, is_new=True)
-
-
-async def signup_store(data: StoreSignup) -> dict:
-    phone = await _verified_phone(data.signup_token)
-    db = get_db()
-    doc = _base_user(phone, data.name, await _email_free(data.email), "admin", "pending")
-    res = await db.users.insert_one(doc)
-    store = {**data.store.model_dump(), "owner_id": res.inserted_id, "is_open": False,
-             "status": "pending", "created_at": now_utc()}
-    s = await db.stores.insert_one(store)
-    await db.users.update_one({"_id": res.inserted_id}, {"$set": {"store_id": s.inserted_id}})
-    return {"status": "pending", "role": "admin", "name": doc["name"]}
-
-
-async def signup_rider(data: RiderSignup) -> dict:
-    phone = await _verified_phone(data.signup_token)
-    v = data.vehicle
-    if v.type.value != "cycle":
-        if len(v.number.strip()) < 4:
-            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Please enter your vehicle number")
-        if not (data.licence_number or "").strip():
-            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Please enter your driving licence number")
-    if data.licence_photo and not data.licence_photo.startswith("/uploads/"):
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Upload the licence photo again")
-    doc = _base_user(phone, data.name, None, "delivery", "pending")
-    doc.update({
-        "vehicle": {"type": v.type.value, "number": v.number.strip().upper()},
-        "licence": {"number": (data.licence_number or "").strip().upper() or None, "photo": data.licence_photo},
-        "city": data.area.strip(), "area": data.area.strip(),
-        "is_online": False, "active_order_id": None, "location": None,
-    })
-    await get_db().users.insert_one(doc)
-    return {"status": "pending", "role": "delivery", "name": doc["name"]}
-
-
-async def signup_upload(token: str, file: UploadFile) -> dict:
-    if not decode_signup_token(token or ""):
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Verify your number first")
-    return {"image_url": await save_image(file, max_bytes=3 * 1024 * 1024)}
-
-
-# ---------------- Rider requests (store admin) ----------------
+# ---------------- Old rider requests (made before invite-only) ----------------
 def _request_out(u: dict) -> dict:
     return {
         "id": str(u["_id"]), "name": u.get("name"), "phone": u.get("phone"), "status": u.get("status", "active"),

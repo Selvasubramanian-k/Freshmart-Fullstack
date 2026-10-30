@@ -8,6 +8,7 @@ const VALID = /^[6-9]\d{9}$/
 const fmt = (p) => (p.length > 5 ? `${p.slice(0, 5)} ${p.slice(5)}` : p)
 
 export default function PhoneOtp({
+  kicker,
   title = 'Enter your mobile number',
   sub = 'We’ll send a 6-digit code by SMS to log you in.',
   note,
@@ -64,12 +65,12 @@ export default function PhoneOtp({
     return (
       <form className="au-step" onSubmit={(e) => { e.preventDefault(); send() }} noValidate>
         {onBack && <BackLink onClick={onBack} />}
-        <div className="au-head"><h2>{title}</h2><p>{sub}</p></div>
+        <div className="au-head">{kicker && <span className="au-tamil" lang="ta">{kicker}</span>}<h2>{title}</h2><p>{sub}</p></div>
         <label className="au-label" htmlFor="au-phone">Mobile number</label>
         <div className={`au-phone ${ok ? 'ok' : ''}`}>
           <span>+91</span>
           <input id="au-phone" inputMode="numeric" autoComplete="tel-national" maxLength={10} placeholder="10-digit number"
-            value={phone} autoFocus onChange={(e) => { setPhone(e.target.value.replace(/\D/g, '').slice(0, 10)); setError('') }} />
+            value={phone} onChange={(e) => { setPhone(e.target.value.replace(/\D/g, '').slice(0, 10)); setError('') }} />
         </div>
         {error && <p className="au-error" role="alert">{error}</p>}
         {demos.length > 0 && (

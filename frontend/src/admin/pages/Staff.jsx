@@ -4,7 +4,7 @@ import { api } from '../../shared/api/client.js'
 import { resolveImage } from '../../shared/utils/images.js'
 import { Empty, ErrorNote, Modal, PageHead } from '../components/ui.jsx'
 
-const ROLES = { manager: 'Manager', picker: 'Picker', packer: 'Packer', cashier: 'Cashier', delivery: 'Delivery (own rider)' }
+const ROLES = { manager: 'Manager', picker: 'Picker', packer: 'Packer', cashier: 'Cashier', delivery: 'Delivery partner' }
 const SHIFTS = ['Morning', 'Evening', 'Night', 'Full day']
 const EMPTY = { name: '', phone: '', email: '', role: 'picker', shift: 'Morning', password: '', vehicle_number: '' }
 
@@ -37,6 +37,9 @@ function StaffForm({ initial, onSaved, onClose }) {
         <label className="ad-field">Role
           <select className="ad-input" value={f.role} onChange={set('role')} disabled={editing && initial.role === 'delivery'}>{Object.entries(ROLES).filter(([k]) => !editing || initial.role === 'delivery' || k !== 'delivery').map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
         </label>
+        {['picker', 'packer'].includes(f.role) && !editing && (
+          <p className="ad-od-note full">They log in to FreshMart with this mobile number (OTP) and get the picker app: pick each item, check expiry, pack and mark the order ready.</p>
+        )}
         {f.role === 'delivery' && !editing && (
           <>
             <label className="ad-field">Vehicle number (optional)<input className="ad-input" value={f.vehicle_number} onChange={set('vehicle_number')} placeholder="TN09AB1234" /></label>
@@ -135,12 +138,12 @@ export default function Staff() {
 
   return (
     <>
-      <PageHead title="Staff" sub="People working at your store, and delivery partners who asked to join. Everyone logs in with their mobile number.">
+      <PageHead title="Staff" sub="Add your packers and delivery partners here. Delivery partners then log in with their mobile number (OTP) and the delivery app opens.">
         <button className="ad-btn" onClick={() => setEditing({})}><Plus size={16} /> Add staff</button>
       </PageHead>
       <div className="ad-tabs" role="tablist">
         <button role="tab" aria-selected={tab === 'team'} className={`ad-tab ${tab === 'team' ? 'on' : ''}`} onClick={() => setTab('team')}>Our team{items && <span className="ad-tab-n">{items.length}</span>}</button>
-        <button role="tab" aria-selected={tab === 'req'} className={`ad-tab ${tab === 'req' ? 'on' : ''}`} onClick={() => setTab('req')}>New delivery partners{pending > 0 && <span className="ad-tab-n hot">{pending}</span>}</button>
+        {reqs.length > 0 && <button role="tab" aria-selected={tab === 'req'} className={`ad-tab ${tab === 'req' ? 'on' : ''}`} onClick={() => setTab('req')}>Old join requests{pending > 0 && <span className="ad-tab-n hot">{pending}</span>}</button>}
       </div>
       <ErrorNote>{error}</ErrorNote>
       {tab === 'req' ? <RiderRequests items={reqs} onDecided={onDecided} /> : !items ? <p className="ad-muted">Loading…</p> : items.length === 0 ? (

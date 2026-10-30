@@ -4,9 +4,9 @@ from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException, status
 from pymongo import ReturnDocument
 
-from app.config import settings
 from app.controllers.store_controller import get_admin_store_doc
 from app.database import get_db
+from app.utils.platform import commission_pct
 from app.models.sale import SaleCreate
 from app.utils.helpers import now_utc, serialize
 
@@ -109,7 +109,7 @@ async def earnings(admin: dict, date_from: datetime, date_to: datetime, tz_minut
     store = await get_admin_store_doc(admin)
     db = get_db()
     sid = store["_id"]
-    pct = settings.PLATFORM_COMMISSION_PERCENT
+    pct = commission_pct(store)
     tz = timezone(timedelta(minutes=tz_minutes))
     date_from, date_to = _aware(date_from), _aware(date_to)
 

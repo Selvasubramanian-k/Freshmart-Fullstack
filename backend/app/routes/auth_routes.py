@@ -1,17 +1,11 @@
-from fastapi import APIRouter, Depends, File, Form, UploadFile, status
+from fastapi import APIRouter, Depends
 
 from app.controllers import auth_controller, onboarding_controller as onboard
 from app.middleware.auth import get_current_user
-from app.models.onboarding import CustomerSignup, OtpSend, OtpVerify, RiderSignup, StoreSignup
-from app.models.user import ChangePassword, LoginRequest, ProfileUpdate, RegisterRequest
+from app.models.onboarding import OtpSend, OtpVerify
+from app.models.user import ChangePassword, LoginRequest, ProfileUpdate
 
 router = APIRouter(prefix="/api/auth", tags=["Auth"])
-
-
-@router.post("/register", status_code=status.HTTP_201_CREATED)
-async def register(data: RegisterRequest):
-    """Register as **customer** (needs `address`) or **admin** / shop owner (needs `store`)."""
-    return await auth_controller.register(data)
 
 
 @router.post("/login")
@@ -48,26 +42,5 @@ async def otp_send(data: OtpSend):
 
 @router.post("/otp/verify")
 async def otp_verify(data: OtpVerify):
-    """status: ok (logged in) | new (signup_token, ask name / form) | pending | rejected"""
+    """status: ok (logged in; a new number becomes a customer) | pending | rejected (old requests)"""
     return await onboard.verify_otp(data)
-
-
-@router.post("/otp/signup", status_code=status.HTTP_201_CREATED)
-async def otp_signup(data: CustomerSignup):
-    return await onboard.signup_customer(data)
-
-
-@router.post("/otp/register-store", status_code=status.HTTP_201_CREATED)
-async def otp_register_store(data: StoreSignup):
-    return await onboard.signup_store(data)
-
-
-@router.post("/otp/join-rider", status_code=status.HTTP_201_CREATED)
-async def otp_join_rider(data: RiderSignup):
-    return await onboard.signup_rider(data)
-
-
-@router.post("/otp/upload", status_code=status.HTTP_201_CREATED)
-async def otp_upload(signup_token: str = Form(...), file: UploadFile = File(...)):
-    """Licence photo while joining (before the account exists)."""
-    return await onboard.signup_upload(signup_token, file)

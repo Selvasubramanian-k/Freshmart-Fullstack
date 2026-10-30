@@ -1,0 +1,47 @@
+/* ─── FreshMart owner panel (reuses the store admin shell, navy + gold) ─── */
+.ad-root.ow { --ad-side: #14213d; --ad-side-2: #1e2d52; }
+.ad-root.ow .ad-nav-link.active { background: #fbbf24; color: #14213d; }
+.ow-mark { width: 36px; height: 36px; border-radius: 11px; background: #fbbf24; color: #14213d; display: grid; place-items: center; flex: none; }
+.ow-mark svg { width: 20px; height: 20px; }
+.ow-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.ow-stats.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.ow-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.ow-needs { display: flex; flex-direction: column; gap: 10px; }
+.ow-need { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; border: 1.5px solid #fde3b0; background: #fffbf2; border-radius: 12px; padding: 12px; }
+.ow-need.red { border-color: #fecaca; background: #fff6f6; }
+.ow-need > div { flex: 1 1 200px; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ow-need b { font-size: 14px; }
+.ow-need span { font-size: 12.5px; color: var(--muted); }
+.ow-live { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.ow-live li { display: flex; align-items: center; gap: 8px; padding: 10px 0; border-bottom: 1px solid #f1f2f4; font-size: 14px; }
+.ow-live li b { margin-left: auto; font-size: 16px; }
+.ow-search { max-width: 360px; }
+.ow-filter { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+.ow-pct { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; }
+.ow-pct .ad-input.sm { width: 64px; text-align: right; }
+.ow-row-btns { display: inline-flex; gap: 6px; }
+.ow-areas { display: flex; flex-wrap: wrap; gap: 8px; }
+.ow-area { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1.5px solid var(--border); background: #fff; font: 700 13px 'Montserrat', sans-serif; color: #4b5563; cursor: pointer; }
+.ow-area em { font-style: normal; font-weight: 600; font-size: 11.5px; color: var(--muted); }
+.ow-area.on { border-color: #007a50; background: #e6f4ee; color: #005c3c; }
+.ow-dot { width: 9px; height: 9px; border-radius: 50%; background: #9ca3af; }
+.ow-area.on .ow-dot { background: #00a870; }
+.ow-offers { display: flex; flex-direction: column; gap: 10px; }
+.ow-offer { display: flex; align-items: center; gap: 12px; border: 1px solid var(--border); border-radius: 12px; padding: 12px; }
+.ow-offer.off { opacity: .65; }
+.ow-offer code { font: 800 12.5px 'Montserrat', sans-serif; letter-spacing: .5px; background: #14213d; color: #fbbf24; border-radius: 8px; padding: 6px 10px; }
+.ow-offer > div { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ow-offer b { font-size: 14px; }
+.ow-offer span { font-size: 12px; color: var(--muted); }
+.ow-num { display: flex; flex-direction: column; gap: 6px; }
+.ow-num span { font-size: 11.5px; font-weight: 800; color: var(--muted); letter-spacing: .4px; }
+.ow-num b { font-size: 26px; }
+.ow-hbars { display: flex; flex-direction: column; gap: 10px; }
+.ow-hbars > div { display: grid; grid-template-columns: 110px minmax(0, 1fr) auto; gap: 10px; align-items: center; font-size: 13px; }
+.ow-hbars i { height: 12px; border-radius: 999px; background: #f1f2f4; overflow: hidden; display: block; }
+.ow-hbars i b { display: block; height: 100%; background: #14213d; border-radius: 999px; }
+.ow-hbars em { font-style: normal; font-weight: 700; }
+.ow-addrow { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+.ow-addrow .ad-field { flex: 1 1 200px; }
+@media (max-width: 1100px) { .ow-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .ow-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 560px) { .ow-stats, .ow-stats.three { grid-template-columns: 1fr; } }
