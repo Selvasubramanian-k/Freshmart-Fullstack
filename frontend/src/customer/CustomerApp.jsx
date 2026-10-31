@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import Navbar      from './components/Navbar.jsx'
 import CartDrawer  from './components/CartDrawer.jsx'
 import Home        from './pages/Home.jsx'
@@ -16,6 +16,7 @@ import { getProduct, loadCatalog } from './data/products.js'
 import { loadOrders, placeOrder } from './utils/orderHistory.js'
 import { useAuth } from '../shared/context/AuthContext.jsx'
 import HomeSkeleton from './components/HomeSkeleton.jsx'
+import LoginSheet from './components/LoginSheet.jsx'
 import './customer.css'
 
 const CART_KEY = 'freshmart_cart'
@@ -44,9 +45,25 @@ function notify(text, orderId) {
 }
 const readCart = () => { try { return JSON.parse(localStorage.getItem(CART_KEY)) || {} } catch { return {} } }
 
+// Page that needs a login (cart checkout, account, orders): opens the login sheet by itself
+function NeedLogin({ onLogin, text }) {
+  useEffect(() => { onLogin() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <div className="ck-page"><div className="ck-card ck-empty">
+      <p>{text}</p>
+      <button className="ck-btn" onClick={onLogin}>Log in with your mobile</button>
+    </div></div>
+  )
+}
+
 export default function CustomerApp() {
-  const { user, logout } = useAuth()
+  const { user: authUser, logout } = useAuth()
+  // freshmart.com is the customer door: a staff login in this tab counts as "not logged in" here
+  const user = authUser?.role === 'customer' ? authUser : null
   const navigate = useNavigate()
+  const location = useLocation()
+  const [login, setLogin] = useState(null)   // null = closed | { reason, then: () => void }
+  const openLogin = useCallback((reason, then) => setLogin({ reason, then }), [])
 
   const [cart, setCart]           = useState(readCart)
   const [drawerOpen, setDrawer]   = useState(false)
@@ -58,8 +75,9 @@ export default function CustomerApp() {
   const [catalogVersion, setCatalogVersion] = useState(0)
 
   // Catalog + order history backend la irundhu load
+  const uid = user?.id
   const refresh = useCallback(async () => {
-    const [, history] = await Promise.all([loadCatalog(), loadOrders()])
+    const [, history] = await Promise.all([loadCatalog(), uid ? loadOrders() : Promise.resolve([])])
     setOrders(history)
     setCatalogVersion(v => v + 1)
     // stock theernthu pona / remove aana products ah cart la irundhu edukkum
@@ -71,7 +89,7 @@ export default function CustomerApp() {
       }
       return next
     })
-  }, [])
+  }, [uid])
 
   useEffect(() => {
     // async fetch; state updates happen after the network call, not synchronously
@@ -106,6 +124,7 @@ export default function CustomerApp() {
     }
   }, [orders])
   useEffect(() => {
+    if (!user) return undefined
     const sync = () => { loadOrders().then(setOrders).catch(() => {}) }
     const onShow = () => { if (document.visibilityState === 'visible') sync() }
     window.addEventListener('focus', sync)
@@ -116,7 +135,7 @@ export default function CustomerApp() {
       window.removeEventListener('focus', sync)
       document.removeEventListener('visibilitychange', onShow)
     }
-  }, [hasLive])
+  }, [hasLive, user])
   useEffect(() => {
     if (!toast) return
     const t = setTimeout(() => setToast(null), 6000)
@@ -128,7 +147,9 @@ export default function CustomerApp() {
     const p = getProduct(id)
     return p && current < p.stock
   }
-  const addToCart  = (p)  => setCart(c => (canAdd(p.id, c[p.id] || 0) ? { ...c, [p.id]: (c[p.id] || 0) + 1 } : c))
+  const addNow     = (p)  => setCart(c => (canAdd(p.id, c[p.id] || 0) ? { ...c, [p.id]: (c[p.id] || 0) + 1 } : c))
+  // not logged in: ask for the mobile number first, then add it
+  const addToCart  = (p)  => (user ? addNow(p) : openLogin('Log in to add to cart and order. New here? Just enter your number.', () => addNow(p)))
   const increment  = (id) => setCart(c => (canAdd(id, c[id] || 0) ? { ...c, [id]: (c[id] || 0) + 1 } : c))
   const decrement  = (id) => setCart(c => {
     const qty = (c[id] || 0) - 1
@@ -151,8 +172,10 @@ export default function CustomerApp() {
     clearCart()
     setDrawer(false)
     logout()
-    navigate('/login')
+    setOrders([])
+    navigate('/')
   }
+  const needLogin = (text) => <NeedLogin key={location.pathname} text={text} onLogin={() => openLogin()} />
 
   if (loadError) {
     return (
@@ -177,6 +200,7 @@ export default function CustomerApp() {
         onSearch={setSearch}
         user={user}
         onLogout={handleLogout}
+        onLogin={() => openLogin()}
       />
 
       <Routes>
@@ -194,18 +218,18 @@ export default function CustomerApp() {
             </main>
           </div>
         }/>
-        <Route path="/account" element={
+        <Route path="/account" element={user ? (
           <Account user={user} orders={orders} increment={increment} onLogout={handleLogout}
             onOpenCart={() => setDrawer(true)} onRefresh={refresh} />
-        }/>
-        <Route path="/checkout" element={<Checkout cart={cart} user={user} onPlaceOrder={handlePlaceOrder} increment={increment} decrement={decrement} />}/>
+        ) : needLogin('Log in to see your account and orders.')}/>
+        <Route path="/checkout" element={user ? <Checkout cart={cart} user={user} onPlaceOrder={handlePlaceOrder} increment={increment} decrement={decrement} /> : needLogin('Log in to place your order. Your cart is saved.')}/>
         <Route path="/success"  element={<Success />} />
         <Route path="/shops"    element={<Shops />} />
         <Route path="/offers"   element={<Offers {...cartProps} onBrowse={setActiveCat} />} />
         <Route path="/contact"  element={<Contact />} />
-        <Route path="/track/:orderId" element={<Track />} />
-        <Route path="/issue/:orderId" element={<Issue />} />
-        <Route path="/cancel/:orderId" element={<CancelOrder increment={increment} onOpenCart={() => setDrawer(true)} onRefresh={refresh} />} />
+        <Route path="/track/:orderId" element={user ? <Track /> : needLogin('Log in to track your order.')} />
+        <Route path="/issue/:orderId" element={user ? <Issue /> : needLogin('Log in to report a problem.')} />
+        <Route path="/cancel/:orderId" element={user ? <CancelOrder increment={increment} onOpenCart={() => setDrawer(true)} onRefresh={refresh} /> : needLogin('Log in to manage your order.')} />
         <Route path="*"         element={<Navigate to="/" replace />} />
       </Routes>
 
@@ -214,6 +238,14 @@ export default function CustomerApp() {
           <span>{toast.text}</span>
           <button onClick={() => { navigate(`/track/${toast.id}`); setToast(null) }}>Track</button>
         </div>
+      )}
+
+      {login && (
+        <LoginSheet
+          reason={login.reason}
+          onClose={() => setLogin(null)}
+          onDone={() => { const then = login.then; setLogin(null); then?.() }}
+        />
       )}
 
       <CartDrawer

@@ -2,7 +2,7 @@ import { lazy, Suspense } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './shared/context/AuthContext.jsx'
 import RequireRole from './shared/components/RequireRole.jsx'
-import Login from './shared/pages/Login.jsx'
+import PartnerLogin from './shared/pages/PartnerLogin.jsx'
 import Welcome from './shared/pages/Welcome.jsx'
 import FullPageLoader from './shared/components/FullPageLoader.jsx'
 
@@ -20,14 +20,13 @@ const DemoView  = DEMO_ON ? lazy(() => import('./demo/DemoView.jsx')) : null
 const DemoLogin = DEMO_ON ? lazy(() => import('./demo/DemoLogin.jsx')) : null
 
 // ─────────────────────────────────────────────────────────────
-//  Root router.  /login -> everyone: mobile -> OTP -> /welcome -> role home
-//                (store owners & delivery partners are added by the owner / store admin, no sign-up page)
+//  Root router.  /*        -> Customer shop (freshmart.com): browse freely, log in when adding to cart
+//                /partner   -> ONE login for store admin, picker, delivery, support, owner (/login goes here)
 //                /admin/*           -> Store admin (shop owner) dashboard
 //                /delivery/*        -> Delivery partner app
 //                /owner/*           -> FreshMart owner (super admin): all stores, commission, areas, offers
 //                /picker            -> store picker / packer app
 //                /support           -> support / operations inbox (support team + owner)
-//                /*                 -> Customer shop
 //  Future roles (delivery, super admin, picker, support) inga oru line add panna podhum.
 // ─────────────────────────────────────────────────────────────
 export default function App() {
@@ -35,9 +34,10 @@ export default function App() {
     <AuthProvider>
       <Suspense fallback={<FullPageLoader />}>
       <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Navigate to="/login" replace />} />
-        <Route path="/join/*" element={<Navigate to="/login" replace />} />
+        <Route path="/partner" element={<PartnerLogin />} />
+        <Route path="/login" element={<Navigate to="/partner" replace />} />
+        <Route path="/register" element={<Navigate to="/" replace />} />
+        <Route path="/join/*" element={<Navigate to="/partner" replace />} />
         <Route path="/welcome" element={<Welcome />} />
         {DemoView && <Route path="/demo" element={<DemoView />} />}
         {DemoLogin && <Route path="/demo/as/:role" element={<DemoLogin />} />}
@@ -46,7 +46,7 @@ export default function App() {
         <Route path="/owner/*" element={<RequireRole role="superadmin"><OwnerApp /></RequireRole>} />
         <Route path="/picker/*" element={<RequireRole role="picker"><PickerApp /></RequireRole>} />
         <Route path="/support/*" element={<RequireRole role={['support', 'superadmin']}><SupportApp /></RequireRole>} />
-        <Route path="/*" element={<RequireRole role="customer"><CustomerApp /></RequireRole>} />
+        <Route path="/*" element={<CustomerApp />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       </Suspense>

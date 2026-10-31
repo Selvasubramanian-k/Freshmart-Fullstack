@@ -13,6 +13,7 @@ export default function PhoneOtp({
   sub = 'We’ll send a 6-digit code by SMS to log you in.',
   note,
   demos = [],
+  door = 'shop',     // 'shop' = freshmart.com customer, 'partner' = staff login
   onBack,
   onVerified,
 }) {
@@ -48,7 +49,7 @@ export default function PhoneOtp({
     if (!/^\d{6}$/.test(value)) return setError('Enter the 6-digit code.')
     setBusy(true); setError('')
     try {
-      const r = await api.post('/api/auth/otp/verify', { phone, code: value })
+      const r = await api.post('/api/auth/otp/verify', { phone, code: value, door })
       await onVerified(r, phone)
     } catch (e) { setError(e.message); setCode('') }
     finally { setBusy(false) }

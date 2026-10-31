@@ -35,6 +35,12 @@ async def otp_config():
     return onboard.otp_config()
 
 
+@router.get("/otp/demo-accounts")
+async def otp_demo_accounts():
+    """Only when OTP_DEV_MODE=true: test accounts for the partner login page."""
+    return await onboard.demo_accounts()
+
+
 @router.post("/otp/send")
 async def otp_send(data: OtpSend):
     return await onboard.send_otp(data)
@@ -42,5 +48,6 @@ async def otp_send(data: OtpSend):
 
 @router.post("/otp/verify")
 async def otp_verify(data: OtpVerify):
-    """status: ok (logged in; a new number becomes a customer) | pending | rejected (old requests)"""
+    """door=shop: always the customer account (new number -> new customer, needs_profile).
+    door=partner: staff account by priority, or status not_partner."""
     return await onboard.verify_otp(data)

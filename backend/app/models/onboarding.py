@@ -1,4 +1,6 @@
 """Mobile OTP login (every role)."""
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 from app.models.user import PHONE_PATTERN
@@ -13,6 +15,7 @@ class OtpSend(BaseModel):
 class OtpVerify(BaseModel):
     phone: str = Field(..., pattern=PHONE_PATTERN)
     code: str = Field(..., pattern=OTP_PATTERN)
+    door: Literal["shop", "partner"] = "shop"   # freshmart.com (customers) or freshmart.com/partner (staff)
 
 
 class RequestDecision(BaseModel):

@@ -25,7 +25,7 @@ function writeAddress(a) {
   try { localStorage.setItem(ADDRESS_KEY, JSON.stringify(a)) } catch { /* ignore */ }
 }
 
-function Navbar({ onCartClick, cartCount, onSearch, user, onLogout, activeCat, onCategory }) {
+function Navbar({ onCartClick, cartCount, onSearch, user, onLogout, onLogin, activeCat, onCategory }) {
   const [rightOpen, setRightOpen] = useState(false)
   const [query, setQuery]         = useState('')
   const [hintIdx, setHintIdx]     = useState(0)
@@ -199,9 +199,13 @@ function Navbar({ onCartClick, cartCount, onSearch, user, onLogout, activeCat, o
           </div>
 
           <div className="zn-actions">
-            <button type="button" className="zn-account" aria-label="My account" onClick={() => navigate('/account')}>
-              <Avatar user={user} size={36} />
-            </button>
+            {user ? (
+              <button type="button" className="zn-account" aria-label="My account" onClick={() => navigate('/account')}>
+                <Avatar user={user} size={36} />
+              </button>
+            ) : (
+              <button type="button" className="zn-login" onClick={onLogin}>Log in</button>
+            )}
             <button type="button" className="zn-cart" aria-label={`Cart, ${cartCount} items`} onClick={onCartClick}>
               <Icon name="shopping-cart" />
               {cartCount > 0 && <span className="zn-cart-badge">{cartCount}</span>}
@@ -243,19 +247,24 @@ function Navbar({ onCartClick, cartCount, onSearch, user, onLogout, activeCat, o
         <a className="right-nav-link" onClick={() => goTo('/contact')}><Icon name="phone" /> Contact</a>
 
         {/* Account in drawer */}
-        <div className="right-drawer-account" onClick={() => goTo('/account')} style={{ cursor: 'pointer' }}>
-          <Avatar user={user} size={40} />
-          <div>
-            <p className="right-account-name">{user?.name || 'Guest User'}</p>
-            <p className="right-account-email">{user?.email || user?.phone || 'guest@freshmart.com'}</p>
+        {user ? <>
+          <div className="right-drawer-account" onClick={() => goTo('/account')} style={{ cursor: 'pointer' }}>
+            <Avatar user={user} size={40} />
+            <div>
+              <p className="right-account-name">{user.name || 'My account'}</p>
+              <p className="right-account-email">{user.email || `+91 ${user.phone}`}</p>
+            </div>
           </div>
-        </div>
-
-        <div className="right-drawer-avatar"><p>Profile picture</p><AvatarPicker user={user} compact /></div>
-
-        <div className="right-drawer-btns">
-          <button className="btn-logout" onClick={handleLogout}><Icon name="log-out" /> Logout</button>
-        </div>
+          <div className="right-drawer-avatar"><p>Profile picture</p><AvatarPicker user={user} compact /></div>
+          <div className="right-drawer-btns">
+            <button className="btn-logout" onClick={handleLogout}><Icon name="log-out" /> Logout</button>
+          </div>
+        </> : (
+          <div className="right-drawer-btns">
+            <button className="zn-login wide" onClick={() => { setRightOpen(false); onLogin() }}>Log in with mobile</button>
+          </div>
+        )}
+        <a className="right-nav-link" href="/partner" style={{ fontSize: 13 }}>Partner login (store, delivery, staff)</a>
       </div>
     </>
   )

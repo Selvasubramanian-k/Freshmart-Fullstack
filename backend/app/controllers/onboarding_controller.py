@@ -107,27 +107,88 @@ async def verify_otp(data: OtpVerify) -> dict:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Wrong code. {left} tries left." if left else "Wrong code.")
     await db.otp_codes.delete_one({"_id": doc["_id"]})
 
-    if data.phone in settings.super_admin_phones:   # FreshMart owner number (from .env)
-        if not await db.users.find_one({"phone": data.phone, "role": "superadmin"}):
-            await db.users.insert_one({"name": "FreshMart owner", "phone": data.phone, "role": "superadmin",
-                                       "is_active": True, "status": "active", "login": "otp", "created_at": now_utc()})
-    user = await _user_by_phone(data.phone, owner_ok=data.phone in settings.super_admin_phones)
-    if not user:   # new number -> customer account, straight to the shop
-        doc = {"name": "", "phone": data.phone, "role": "customer", "is_active": True, "status": "active",
-               "login": "otp", "created_at": now_utc(), "last_login_at": now_utc()}
-        res = await db.users.insert_one(doc)
-        doc["_id"] = res.inserted_id
-        return _auth(doc, is_new=True)
+    if data.door == "shop":
+        return await _shop_login(data.phone)
+    return await _partner_login(data.phone)
+
+
+def _needs_profile(user: dict) -> bool:
+    return not (user.get("name") or "").strip()
+
+
+async def _shop_login(phone: str) -> dict:
+    """freshmart.com: always the customer account of this number (made on first login)."""
+    db = get_db()
+    user = await db.users.find_one({"phone": phone, "role": "customer"})
+    if not user:
+        other = await db.users.find_one({"phone": phone, "name": {"$nin": ["", None]}})   # staff shopping: we know the name
+        user = {"name": (other or {}).get("name", "").split(" (")[0], "phone": phone, "role": "customer", "is_active": True,
+                "status": "active", "login": "otp", "created_at": now_utc()}
+        user["_id"] = (await db.users.insert_one(user)).inserted_id
+        is_new = True
+    else:
+        is_new = False
+        if not user.get("is_active", True):
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "This account is blocked. Please contact FreshMart support.")
+    await db.users.update_one({"_id": user["_id"]}, {"$set": {"last_login_at": now_utc()}})
+    return {**_auth(user, is_new=is_new), "needs_profile": _needs_profile(user)}
+
+
+async def _partner_label(user: dict) -> str:
+    db = get_db()
+    role = user["role"]
+    if role in ("admin", "picker") or (role == "delivery" and user.get("in_house")):
+        store = await db.stores.find_one({"_id": user.get("store_id")}) if user.get("store_id") else None
+        if store:
+            return store["name"]
+    if role == "delivery":
+        v = user.get("vehicle") or {}
+        return f"{(v.get('type') or 'Bike').title()} {v.get('number') or ''}".strip()
+    return {"support": "All stores", "superadmin": "All stores · all areas"}.get(role, "")
+
+
+async def _partner_login(phone: str) -> dict:
+    """freshmart.com/partner: store admin, picker, delivery, support, owner. Customers are sent to the shop."""
+    db = get_db()
+    owner_ok = phone in settings.super_admin_phones
+    if owner_ok and not await db.users.find_one({"phone": phone, "role": "superadmin"}):
+        await db.users.insert_one({"name": "FreshMart owner", "phone": phone, "role": "superadmin",
+                                   "is_active": True, "status": "active", "login": "otp", "created_at": now_utc()})
+    q: dict = {"phone": phone, "role": {"$ne": "customer"}}
+    if not owner_ok:
+        q["role"] = {"$nin": ["customer", "superadmin"]}
+    users = await db.users.find(q).to_list(None)
+    if not users:
+        return {"status": "not_partner", "is_customer": bool(await db.users.find_one({"phone": phone, "role": "customer"}))}
+    user = sorted(users, key=lambda u: ROLE_PRIORITY.get(u.get("role"), 9))[0]
     st = user.get("status", "active")
     if st == "pending":
         return {"status": "pending", "role": user["role"], "name": user.get("name", "")}
     if st == "rejected":
-        return {"status": "rejected", "role": user["role"], "name": user.get("name", ""),
-                "note": user.get("review_note") or ""}
+        return {"status": "rejected", "role": user["role"], "name": user.get("name", ""), "note": user.get("review_note") or ""}
     if not user.get("is_active", True):
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "This account is disabled. Please contact the store.")
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "This account is turned off. Please contact your store admin.")
     await db.users.update_one({"_id": user["_id"]}, {"$set": {"last_login_at": now_utc()}})
-    return _auth(user)
+    return {**_auth(user), "place": await _partner_label(user)}
+
+
+async def demo_accounts() -> list[dict]:
+    """OTP_DEV_MODE only: one account per partner role for the 'Test accounts' button."""
+    if not settings.OTP_DEV_MODE:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
+    db = get_db()
+    out = []
+    for role in ("admin", "picker", "delivery", "support"):
+        u = await db.users.find_one({"role": role, "is_active": {"$ne": False}, "status": {"$nin": ["pending", "rejected"]},
+                                     "phone": {"$exists": True}}, sort=[("created_at", 1)])
+        if u:
+            out.append({"role": role, "name": u.get("name") or role.title(), "phone": u["phone"]})
+    for phone in sorted(settings.super_admin_phones)[:1]:
+        out.append({"role": "superadmin", "name": "Owner", "phone": phone})
+    c = await db.users.find_one({"role": "customer", "phone": {"$exists": True}, "name": {"$nin": ["", None]}}, sort=[("created_at", 1)])
+    if c:
+        out.append({"role": "customer", "name": c.get("name"), "phone": c["phone"]})
+    return out
 
 
 # ---------------- Old rider requests (made before invite-only) ----------------

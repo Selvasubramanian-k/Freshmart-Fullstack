@@ -221,7 +221,7 @@ export default function Welcome() {
   const { user, loading } = useAuth()
   const { state } = useLocation()
   if (loading) return <FullPageLoader />
-  if (!user) return <Navigate to="/login" replace />
+  if (!user) return <Navigate to="/partner" replace />
   if (!state?.fresh) return <Navigate to={homeFor(user.role)} replace />
   if (['superadmin', 'picker', 'support'].includes(user.role)) return <Navigate to={homeFor(user.role)} replace />
   if (user.role === 'admin') return <AdminWelcome user={user} />

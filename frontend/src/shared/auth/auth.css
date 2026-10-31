@@ -261,3 +261,26 @@
   .wl-admin-foot { flex-direction: column; align-items: stretch; text-align: center; }
 }
 @media (max-width: 380px) { .wl-glance { grid-template-columns: 1fr; } }
+
+/* ─── freshmart.com login sheet (customers) ─── */
+.cs-back { position: fixed; inset: 0; z-index: 1000; background: rgba(11,61,46,.45); display: flex; align-items: flex-end; justify-content: center; font-family: 'Montserrat', system-ui, sans-serif; color: #0b3d2e; }
+.cs-back * { box-sizing: border-box; }
+.cs-sheet { position: relative; width: 100%; max-width: 460px; max-height: 92dvh; overflow-y: auto; background: #fff; border-radius: 24px 24px 0 0; padding: 14px 20px 22px; display: flex; flex-direction: column; box-shadow: 0 -10px 40px rgba(0,0,0,.15); }
+.cs-sheet.tall { min-height: 88dvh; }
+.cs-sheet .au-step { min-height: 0; }
+.cs-grip { align-self: center; width: 44px; height: 5px; border-radius: 999px; background: #d1d5db; margin-bottom: 6px; }
+.cs-x { position: absolute; top: 14px; right: 14px; width: 40px; height: 40px; border-radius: 12px; border: 0; background: #f1f2f4; color: #374151; font: 800 15px 'Montserrat', sans-serif; cursor: pointer; z-index: 1; }
+.cs-steps { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.cs-steps span { height: 5px; border-radius: 999px; background: #e5e7eb; }
+.cs-steps span.on { background: #00a870; }
+.cs-kick { font-size: 12px; font-weight: 800; color: #4b5563; letter-spacing: .4px; }
+.cs-row { display: flex; justify-content: space-between; align-items: center; }
+.cs-link { border: 0; background: none; min-height: 36px; font: 800 13px 'Montserrat', sans-serif; color: #007a50; cursor: pointer; }
+.cs-locate { min-height: 48px; border-radius: 12px; border: 1.5px dashed #00a870; background: #fff; color: #007a50; font: 800 14px 'Montserrat', sans-serif; cursor: pointer; }
+.cs-locate.ok { border-style: solid; border-color: #9fd3bd; background: #e6f4ee; color: #005c3c; }
+.cs-skip { min-height: 42px; border: 0; background: none; font: 700 13.5px 'Montserrat', sans-serif; color: #4b5563; cursor: pointer; }
+.au-note a { color: #007a50; font-weight: 800; }
+@media (min-width: 700px) { .cs-back { align-items: center; } .cs-sheet { border-radius: 24px; } .cs-sheet.tall { min-height: 0; } .cs-grip { display: none; } }
+/* same colour tokens for the sheet + partner page (they don't sit inside .au) */
+.cs-sheet, .pt-card { --au-green: #00a870; --au-green-d: #007a50; --au-ink: #0b3d2e; --au-muted: #3f5a4d; --au-mint: #f1faf4; --au-line: #d1d5db; --au-amber: #d97706; }
+.cs-sheet .au-step > *, .pt-card .au-step > * { flex-shrink: 0; }
