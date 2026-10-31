@@ -20,7 +20,7 @@ import './owner.css'
 const NAV = [
   { to: '/owner',              label: 'Overview',             icon: LayoutDashboard, end: true },
   { to: '/owner/stores',       label: 'Stores',               icon: Store },
-  { to: '/owner/areas',        label: 'Areas & offers',       icon: MapPinned },
+  { to: '/owner/areas',        label: 'Areas, offers & delivery', icon: MapPinned },
   { to: '/owner/users',        label: 'Users',                icon: Users },
   { to: '/owner/money',        label: 'Commission & payouts', icon: IndianRupee },
   { to: '/owner/reports',      label: 'Reports',              icon: BarChart3 },

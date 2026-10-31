@@ -14,13 +14,24 @@ from app.controllers.order_controller import hide_code
 from app.database import get_db
 from app.models.delivery import DeliverRequest, LocationUpdate, OnlineToggle
 from app.utils.helpers import now_utc, serialize, to_object_id
+from app.utils.platform import get_platform
 
 RIDER_BASE_FEE = 30.0          # ₹ per delivery (tip is added on top)
 PICKABLE_STATUSES = ["confirmed", "packed"]   # store has accepted; rider can head over
 
 
+def _pay(order: dict) -> dict:
+    """Rider pay breakdown. Orders from before distance pay: flat ₹30 + tip."""
+    p = order.get("rider_pay")
+    if p:
+        return p
+    tip = float(order["bill"].get("tip", 0))
+    return {"base": RIDER_BASE_FEE, "km": None, "km_known": False, "per_km": 0, "distance": 0, "tip": tip,
+            "total": round(RIDER_BASE_FEE + tip, 2)}
+
+
 def _rider_fee(order: dict) -> float:
-    return round(RIDER_BASE_FEE + float(order["bill"].get("tip", 0)), 2)
+    return _pay(order)["total"]
 
 
 def _store_point(store: dict | None) -> dict | None:
@@ -92,6 +103,7 @@ async def available_tasks(rider: dict) -> list[dict]:
             "items_count": sum(i["quantity"] for i in o["items"]),
             "cod_amount": o["bill"]["total"] if cod else 0,
             "earning": _rider_fee(o),
+            "pay": _pay(o),
             "is_exchange": bool(o.get("is_exchange")),
             "tip": o["bill"].get("tip", 0),
             "created_at": o["created_at"],
@@ -199,6 +211,7 @@ async def current_task(rider: dict) -> dict | None:
     data["store"] = {**(_store_point(store) or {}), "phone": owner.get("phone") if owner else None}
     data["cod_amount"] = order["bill"]["total"] if cod else 0
     data["earning"] = _rider_fee(order)
+    data["pay"] = _pay(order)
     return data
 
 
@@ -264,8 +277,11 @@ async def earnings(rider: dict, days: int = 1) -> dict:
     orders = await get_db().orders.find(
         {"partner.id": rider["id"], "status": "delivered", "delivered_at": {"$gte": start}}
     ).sort("delivered_at", -1).to_list(None)
-    fees = len(orders) * RIDER_BASE_FEE
-    tips = round(sum(o["bill"].get("tip", 0) for o in orders), 2)
+    pays = [_pay(o) for o in orders]
+    fees = round(sum(p["base"] for p in pays), 2)
+    distance = round(sum(p["distance"] for p in pays), 2)
+    km = round(sum(p["km"] or 0 for p in pays), 1)
+    tips = round(sum(p["tip"] for p in pays), 2)
     cash = round(sum(o["partner"].get("cash_collected", 0) for o in orders), 2)
     trips = [{
         "id": str(o["_id"]),
@@ -273,17 +289,21 @@ async def earnings(rider: dict, days: int = 1) -> dict:
         "drop": o["address"]["text"],
         "store": o["store_name"],
         "delivered_at": o["delivered_at"],
-        "earning": o["partner"].get("earning", RIDER_BASE_FEE),
+        "earning": o["partner"].get("earning", _rider_fee(o)),
+        "pay": _pay(o),
         "cod": o["partner"].get("cash_collected", 0) > 0,
     } for o in orders]
     return serialize({
         "days": days,
         "deliveries": len(orders),
         "fees": fees,
+        "distance_pay": distance,
+        "km": km,
         "tips": tips,
-        "total": round(fees + tips, 2),
+        "total": round(fees + distance + tips, 2),
         "cash_to_deposit": cash,
-        "base_fee": RIDER_BASE_FEE,
+        "base_fee": (plat := await get_platform())["rider_base_fee"],
+        "per_km": plat["rider_per_km"],
         "trips": trips,
     })
 

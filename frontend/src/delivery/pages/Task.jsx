@@ -4,6 +4,7 @@ import { api } from '../../shared/api/client.js'
 import LiveMap from '../../shared/map/LiveMap.jsx'
 import { approxNear, distanceKm, fetchRoute, fmtKm, fmtMin, googleMapsLink, hasPoint, resolvePlace } from '../../shared/map/geo.js'
 import { useRider } from '../RiderContext.jsx'
+import PaySplit from '../PaySplit.jsx'
 import SlideButton from '../components/SlideButton.jsx'
 
 const rs = (n) => `₹${Math.round(n)}`
@@ -23,7 +24,6 @@ export default function Task({ onDone }) {
   const [store, setStore] = useState(null)   // resolved {lat,lng,...}
   const [drop, setDrop] = useState(null)
   const [route, setRoute] = useState(null)
-  const [checked, setChecked] = useState({})
   const [arrivedAtCustomer, setArrived] = useState(false)
   const [code, setCode] = useState(['', '', '', ''])
   const [cash, setCash] = useState(false)
@@ -88,7 +88,7 @@ export default function Task({ onDone }) {
   const deliver = () => act(async () => {
     const r = await api.post('/api/delivery/tasks/current/deliver', { code: code.join(''), cash_collected: cash })
     stopSim()
-    setDone({ earning: r.earning })
+    setDone({ earning: r.earning, pay: task?.pay })
   })
 
   // Demo drive: if the laptop GPS is far away (another city), start ~2 km before the target instead
@@ -120,6 +120,7 @@ export default function Task({ onDone }) {
         <span className={`rd-done-ic ${done.cancelled ? 'red' : ''}`}>{done.cancelled ? '!' : <Check size={40} />}</span>
         <h1>{done.cancelled ? 'Order was cancelled' : 'Delivered!'}</h1>
         <p>{done.cancelled ? 'The customer or store cancelled this order. No need to continue.' : `You earned ${rs(done.earning)} for this delivery.`}</p>
+        {!done.cancelled && <PaySplit pay={done.pay} />}
         <button className="rd-btn" onClick={onDone}>Back to deliveries</button>
       </div>
     )
@@ -203,17 +204,30 @@ export default function Task({ onDone }) {
         {/* ── at the store: check items, pick up ── */}
         {stage === 'at_store' && (
           <>
-            <div className="rd-items">
-              <div className="rd-items-head"><b>#{task.order_number}</b><span className={task.status === 'packed' ? 'ok' : 'wait'}>{task.status === 'packed' ? 'Packed ✓' : 'Packing…'}</span></div>
-              {task.items.map((it) => (
-                <label key={it.pid}>
-                  <input type="checkbox" checked={Boolean(checked[it.pid])} onChange={() => setChecked((c) => ({ ...c, [it.pid]: !c[it.pid] }))} />
-                  {it.name} <small>{it.unit} × {it.quantity}</small>
-                </label>
-              ))}
+            {task.status === 'packed' ? (
+              <div className="rd-bag">
+                <small>ASK THE STORE FOR</small>
+                <span className="rd-bag-tag">{task.pick?.bag_tag || `#${task.order_number.slice(-4)}`}</span>
+                <p>
+                  {task.pick?.bags ? <b>{task.pick.bags} bag{task.pick.bags > 1 ? 's' : ''} · </b> : null}
+                  {task.items.reduce((n, i) => n + i.quantity, 0)} items
+                  {task.pick?.by_name ? ` · packed by ${task.pick.by_name}` : ''}
+                </p>
+              </div>
+            ) : (
+              <div className="rd-bag wait">
+                <b>The store is still packing</b>
+                <p>{task.pick?.by_name
+                  ? `${task.pick.by_name} has picked ${(task.pick.items || []).filter((i) => ['picked', 'substituted'].includes(i?.status)).length} of ${task.items.length} items.`
+                  : 'The store will pack it in a moment.'} You’ll see the bag number here when it’s ready.</p>
+              </div>
+            )}
+            <div className="rd-tags">
+              <span>#{task.order_number}</span>
+              {task.cod_amount > 0 && <span className="amber">Collect {rs(task.cod_amount)} cash</span>}
             </div>
             <SlideButton
-              label={task.status === 'packed' ? 'Slide: Picked up order' : 'Waiting for store to pack…'}
+              label={task.status === 'packed' ? `Slide: I got ${task.pick?.bag_tag ? `bag ${task.pick.bag_tag}` : 'the order'}` : 'Waiting for bag number…'}
               disabled={task.status !== 'packed'}
               busy={busy}
               onConfirm={pickedUp}

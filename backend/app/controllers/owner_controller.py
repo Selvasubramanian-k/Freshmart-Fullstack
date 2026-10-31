@@ -7,7 +7,7 @@ from fastapi import HTTPException, status
 from pymongo.errors import DuplicateKeyError
 
 from app.database import get_db
-from app.models.owner import (AgentCreate, AreasUpdate, CouponCreate, CouponUpdate, OwnerStoreCreate,
+from app.models.owner import (AgentCreate, AreasUpdate, CouponCreate, CouponUpdate, DeliverySettings, OwnerStoreCreate,
                               OwnerStoreUpdate, UserActive)
 from app.utils import sms
 from app.utils.helpers import now_utc, serialize, to_object_id
@@ -182,6 +182,19 @@ async def areas() -> dict:
 async def set_areas(data: AreasUpdate) -> dict:
     await set_platform({"areas_off": sorted({a.strip() for a in data.areas_off if a.strip()})})
     return await areas()
+
+
+DELIVERY_KEYS = list(DeliverySettings.model_fields)
+
+
+async def delivery_settings() -> dict:
+    p = await get_platform()
+    return {k: p[k] for k in DELIVERY_KEYS}
+
+
+async def set_delivery_settings(data: DeliverySettings) -> dict:
+    await set_platform(data.model_dump())
+    return await delivery_settings()
 
 
 async def list_coupons() -> list[dict]:

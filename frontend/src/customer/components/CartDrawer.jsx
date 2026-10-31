@@ -1,5 +1,6 @@
 import { useNavigate, useLocation } from 'react-router-dom'
-import { getProduct, DELIVERY } from '../data/products.js'
+import { getProduct } from '../data/products.js'
+import { useDeliveryFee } from '../utils/deliveryFee.js'
 import ProductImage from './ProductImage.jsx'
 import { getPersonalRecommendations } from '../utils/recommend.js'
 import Icon from './Icon.jsx'
@@ -14,7 +15,10 @@ function CartDrawer({ isOpen, onClose, onOpen, cart, addToCart, increment, decre
 
   const entries  = Object.entries(cart).filter(([, q]) => q > 0)
   const subtotal = entries.reduce((s, [id, q]) => s + (getP(id)?.price || 0) * q, 0)
-  const total    = subtotal + (subtotal > 0 ? DELIVERY : 0)
+  const { feeFor, moreForFree } = useDeliveryFee()
+  const delivery = feeFor(subtotal)
+  const more     = moreForFree(subtotal)
+  const total    = subtotal + delivery
   const totalQty = entries.reduce((s, [, q]) => s + q, 0)
 
   // Cart + previous orders based suggestions (milk -> sugar, tea powder, coffee powder)
@@ -85,7 +89,8 @@ function CartDrawer({ isOpen, onClose, onOpen, cart, addToCart, increment, decre
         {entries.length > 0 && (
           <div className="drawer-footer">
             <div className="summary-row"><span>Subtotal</span><span>₹{subtotal}</span></div>
-            <div className="summary-row"><span>Delivery</span><span>₹{DELIVERY}</span></div>
+            <div className="summary-row"><span>Delivery</span><span>{delivery ? `₹${delivery}` : 'FREE'}</span></div>
+            {more > 0 && <p className="summary-hint" style={{ margin: '2px 0 6px', fontSize: 12.5, color: '#007a50', fontWeight: 700 }}>Add ₹{more} more for free delivery</p>}
             <div className="summary-row total"><span>Total</span><span>₹{total}</span></div>
             <button className="btn-checkout" onClick={goCheckout}>Proceed to Checkout →</button>
           </div>

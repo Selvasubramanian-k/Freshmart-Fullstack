@@ -16,7 +16,68 @@ const mins = (iso) => Math.max(0, Math.floor((Date.now() - asDate(iso).getTime()
 const PAY = { cod: 'Cash', gpay: 'GPay', phonepe: 'PhonePe', paytm: 'Paytm', card: 'Card', nb: 'Net banking', bhim: 'BHIM', exchange: 'Exchange' }
 const CHECKS = ['Bill slip inside', 'Bags sealed']
 
+const RANGES = [['today', 'Today'], ['yesterday', 'Yesterday'], ['week', 'Last 7 days']]
+const STATUS = { packed: ['Waiting for rider', 'am'], out_for_delivery: ['Out for delivery', 'bl'], delivered: ['Delivered', 'g'], cancelled: ['Cancelled', 'red'], returned: ['Returned', 'red'] }
+
+function History({ me }) {
+  const [range, setRange] = useState('today')
+  const [who, setWho] = useState('all')
+  const [state, setState] = useState({ key: '', data: null, error: '' })
+  const key = `${range}-${who}`
+  useEffect(() => {
+    let live = true
+    api.get(`/api/picker/history?range=${range}&who=${who}&tz=${-new Date().getTimezoneOffset()}`)
+      .then((data) => live && setState({ key, data, error: '' })).catch((e) => live && setState({ key, data: null, error: e.message }))
+    return () => { live = false }
+  }, [range, who, key])
+  const h = state.key === key ? state.data : null
+  const max = Math.max(1, ...(h?.board || []).map((b) => b.orders))
+  const label = RANGES.find(([k]) => k === range)[1]
+  return (
+    <div className="pk-body">
+      <div className="pk-range">{RANGES.map(([k, l]) => <button key={k} className={range === k ? 'on' : ''} aria-pressed={range === k} onClick={() => setRange(k)}>{l}</button>)}</div>
+      <div className="pk-seg" role="tablist" aria-label="Whose orders">
+        <button role="tab" aria-selected={who === 'me'} className={who === 'me' ? 'on' : ''} onClick={() => setWho('me')}>Only me</button>
+        <button role="tab" aria-selected={who === 'all'} className={who === 'all' ? 'on' : ''} onClick={() => setWho('all')}>Everyone in store</button>
+      </div>
+      {state.error && <p className="pk-err" role="alert">{state.error}</p>}
+      {!h ? <p className="pk-hint">Loading…</p> : <>
+        <div className="pk-stats">
+          <div><b>{h.orders}</b><span>Orders packed</span></div>
+          <div><b>{h.items}</b><span>Items picked</span></div>
+          <div><b>{h.avg_minutes == null ? '—' : h.avg_minutes < 1 ? '<1 min' : `${Math.round(h.avg_minutes)} min`}</b><span>Avg. time</span></div>
+        </div>
+        {who === 'all' && h.board.length > 0 && (
+          <section className="pk-board"><b>Who picked</b>
+            {h.board.map((p) => (
+              <div key={p.name} className="pk-bp">
+                <span className="pk-av" aria-hidden="true">{p.name.charAt(0)}</span>
+                <div><span>{p.name}{p.name === me?.name ? ' (you)' : ''}</span><i><b style={{ width: `${(p.orders / max) * 100}%` }} /></i></div>
+                <strong>{p.orders}</strong>
+              </div>
+            ))}
+          </section>
+        )}
+        <p className="pk-lbl2">{label} · {h.list.length} order{h.list.length === 1 ? '' : 's'}</p>
+        {h.list.length === 0 && <p className="pk-hint">Nothing packed {range === 'today' ? 'yet today' : 'in this time'}.</p>}
+        {h.list.map((o) => {
+          const [st, tone] = STATUS[o.status] || [o.status, 'am']
+          return (
+            <section key={o.id} className="pk-hrow">
+              <span className="pk-htag">{o.bag_tag || '—'}</span>
+              <div><b>#{o.order_number.slice(-6)} · {o.items} items{o.bags ? ` · ${o.bags} bag${o.bags > 1 ? 's' : ''}` : ''}</b>
+                <span>Picked by {o.mine ? 'you' : o.picked_by} · {new Date(/Z$|[+-]\d\d:\d\d$/.test(o.packed_at) ? o.packed_at : `${o.packed_at}Z`).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })}{range === 'week' ? ` · ${new Date(/Z$|[+-]\d\d:\d\d$/.test(o.packed_at) ? o.packed_at : `${o.packed_at}Z`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}` : ''}</span></div>
+              <span className={`pk-st ${tone}`}>{st}</span>
+            </section>
+          )
+        })}
+      </>}
+    </div>
+  )
+}
+
 function Queue({ me, onOpen }) {
+  const [tab, setTab] = useState('pick')
   const [items, setItems] = useState(null)
   const [error, setError] = useState('')
   const load = useCallback(() => api.get('/api/picker/queue').then((q) => { setItems(q); setError('') }).catch((e) => setError(e.message)), [])
@@ -26,9 +87,12 @@ function Queue({ me, onOpen }) {
       <div className="pk-top">
         <div className="pk-row"><div><b>{me?.store?.name || 'Your store'}</b><small>Picker · {me?.name}</small></div>
           <span className="pk-pill">{me?.packed_today ?? 0} packed today</span></div>
-        <h1>{items ? `${items.length} order${items.length === 1 ? '' : 's'} to pick` : 'Loading…'}</h1>
+        <div className="pk-tabs" role="tablist" aria-label="Picker">
+          <button role="tab" aria-selected={tab === 'pick'} className={tab === 'pick' ? 'on' : ''} onClick={() => setTab('pick')}>To pick{items?.length ? <em>{items.length}</em> : null}</button>
+          <button role="tab" aria-selected={tab === 'history'} className={tab === 'history' ? 'on' : ''} onClick={() => setTab('history')}>Picked history</button>
+        </div>
       </div>
-      <div className="pk-body">
+      {tab === 'history' ? <History me={me} /> : <div className="pk-body">
         {error && <p className="pk-err" role="alert">{error}</p>}
         {items && items.length === 0 && <div className="pk-empty"><PackageCheck size={40} /><b>All caught up</b><span>New orders show up here by themselves.</span></div>}
         {items?.map((o, i) => {
@@ -45,7 +109,7 @@ function Queue({ me, onOpen }) {
           )
         })}
         <p className="pk-hint">Oldest order on top. Pick it first.</p>
-      </div>
+      </div>}
     </>
   )
 }

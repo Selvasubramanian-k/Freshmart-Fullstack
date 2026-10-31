@@ -1,5 +1,5 @@
 """Picker / packing staff app."""
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
 from app.controllers import picker_controller as picker
 from app.middleware.auth import require_picker
@@ -16,6 +16,13 @@ async def me(user: dict = Depends(require_picker)):
 @router.get("/queue")
 async def queue(user: dict = Depends(require_picker)):
     return await picker.queue(user)
+
+
+@router.get("/history")
+async def history(range: str = Query("today", pattern="^(today|yesterday|week)$"),
+                  who: str = Query("all", pattern="^(all|me)$"), tz: int = Query(330, ge=-720, le=840),
+                  user: dict = Depends(require_picker)):
+    return await picker.history(user, range, who, tz)
 
 
 @router.get("/orders/{order_id}")

@@ -3,7 +3,8 @@ from fastapi import APIRouter, Depends, Query
 
 from app.controllers import owner_controller as owner, support_controller as support
 from app.middleware.auth import require_superadmin
-from app.models.owner import AgentCreate, AreasUpdate, CouponCreate, CouponUpdate, OwnerStoreCreate, OwnerStoreUpdate, UserActive
+from app.models.owner import (AgentCreate, AreasUpdate, CouponCreate, CouponUpdate, DeliverySettings, OwnerStoreCreate,
+                              OwnerStoreUpdate, UserActive)
 
 router = APIRouter(prefix="/api/owner", tags=["FreshMart owner"], dependencies=[Depends(require_superadmin)])
 
@@ -36,6 +37,16 @@ async def areas():
 @router.put("/areas")
 async def set_areas(data: AreasUpdate):
     return await owner.set_areas(data)
+
+
+@router.get("/delivery-settings")
+async def delivery_settings():
+    return await owner.delivery_settings()
+
+
+@router.put("/delivery-settings")
+async def set_delivery_settings(data: DeliverySettings):
+    return await owner.set_delivery_settings(data)
 
 
 @router.get("/coupons")

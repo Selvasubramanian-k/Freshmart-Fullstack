@@ -57,13 +57,13 @@ async def validate_coupon(code: str | None, subtotal: float) -> tuple[str | None
     return code, coupon_discount(rule, subtotal)
 
 
-def compute_bill(subtotal: float, method: str, tip: float, coupon_off: float) -> dict:
-    base = subtotal + DELIVERY_FEE - coupon_off
+def compute_bill(subtotal: float, method: str, tip: float, coupon_off: float, delivery_fee: float = DELIVERY_FEE) -> dict:
+    base = subtotal + delivery_fee - coupon_off
     method_off, cashback = method_offer(method, base)
     total = max(0.0, base + tip - method_off)
     return {
         "subtotal": round(subtotal, 2),
-        "delivery_fee": DELIVERY_FEE,
+        "delivery_fee": round(delivery_fee, 2),
         "tip": round(tip, 2),
         "coupon_discount": round(coupon_off, 2),
         "payment_discount": round(method_off, 2),

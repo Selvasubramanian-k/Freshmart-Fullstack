@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import PaySplit from '../PaySplit.jsx'
 import { api } from '../../shared/api/client.js'
 
 const rs = (n) => `₹${Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
@@ -30,12 +31,13 @@ export default function Earnings() {
         <div className="rd-earn-body">
           <div className="rd-stats">
             <div><b>{e.deliveries}</b><span>Deliveries</span></div>
-            <div><b>{rs(e.base_fee)}</b><span>Per delivery</span></div>
+            <div><b>{e.km ?? 0} km</b><span>Distance</span></div>
             <div><b>{rs(e.tips)}</b><span>Tips</span></div>
           </div>
 
           <section className="rd-card">
-            <div className="rd-line"><span>Delivery fees</span><b>{rs(e.fees)}</b></div>
+            <div className="rd-line"><span>Delivery fees ({e.deliveries} × trip)</span><b>{rs(e.fees)}</b></div>
+            <div className="rd-line"><span>Distance pay ({e.km ?? 0} km)</span><b>{rs(e.distance_pay || 0)}</b></div>
             <div className="rd-line"><span>Customer tips</span><b>{rs(e.tips)}</b></div>
             <div className="rd-line total"><span>Your earnings</span><b>{rs(e.total)}</b></div>
             {e.cash_to_deposit > 0 && <div className="rd-line amber"><span>Cash collected (deposit at store)</span><b>{rs(e.cash_to_deposit)}</b></div>}
@@ -46,7 +48,7 @@ export default function Earnings() {
             {e.trips.length === 0 ? <p className="rd-muted">No deliveries yet. Go online to start earning.</p> : e.trips.map((t) => (
               <div className="rd-trip" key={t.id}>
                 <span className="rd-trip-time">{time(t.delivered_at)}</span>
-                <div><b>{t.drop}</b><small>{t.store} · {t.cod ? 'Cash' : 'Prepaid'}</small></div>
+                <div><b>{t.drop}</b><small>{t.store} · {t.cod ? 'Cash' : 'Prepaid'}</small><PaySplit pay={t.pay} className="rd-split sm" /></div>
                 <b>{rs(t.earning)}</b>
               </div>
             ))}

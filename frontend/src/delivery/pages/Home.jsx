@@ -5,6 +5,7 @@ import LiveMap from '../../shared/map/LiveMap.jsx'
 import { distanceKm, fmtKm, hasPoint } from '../../shared/map/geo.js'
 import { useRider } from '../RiderContext.jsx'
 import Task from './Task.jsx'
+import PaySplit from '../PaySplit.jsx'
 
 const rs = (n) => `₹${Math.round(n)}`
 
@@ -16,7 +17,8 @@ function TaskCard({ t, pos, onAccept, busy }) {
       <div className="rd-task-top">
         <div>
           <span className="rd-kicker amber">{t.is_exchange ? 'Exchange delivery' : 'New delivery'}</span>
-          <div className="rd-earn">{rs(t.earning)} {t.tip > 0 && <small>incl. ₹{Math.round(t.tip)} tip</small>}</div>
+          <div className="rd-earn">{rs(t.earning)} <small>you earn</small></div>
+          <PaySplit pay={t.pay} />
         </div>
         <span className={`rd-chip ${t.status === 'packed' ? 'green' : ''}`}>{t.status === 'packed' ? 'Packed, ready' : 'Store packing'}</span>
       </div>

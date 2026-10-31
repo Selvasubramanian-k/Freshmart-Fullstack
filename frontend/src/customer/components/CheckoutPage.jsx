@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
-import { getProduct, DELIVERY } from '../data/products.js'
+import { getProduct } from '../data/products.js'
+import { useDeliveryFee } from '../utils/deliveryFee.js'
 import ProductImage from './ProductImage.jsx'
 import Icon from './Icon.jsx'
 import { readAddrs, saveAddrs } from '../utils/addresses.js'
@@ -99,6 +100,9 @@ function CheckoutPage({ cart, user, onBack, onPlaceOrder, increment, decrement }
 
   const entries  = Object.entries(cart).filter(([, q]) => q > 0)
   const subtotal = entries.reduce((s, [id, q]) => s + (getProduct(id)?.price || 0) * q, 0)
+  const { feeFor, moreForFree } = useDeliveryFee()
+  const DELIVERY = feeFor(subtotal)
+  const moreFree = moreForFree(subtotal)
   useEffect(() => { api.get('/api/coupons').then(setOffers).catch(() => {}) }, [])
   // cart changed after a coupon was applied -> check it again (min order / % off)
   const couponCode = coupon?.code
@@ -234,7 +238,7 @@ function CheckoutPage({ cart, user, onBack, onPlaceOrder, increment, decrement }
   const billRows = (
     <>
       <div className="ck-tr"><span>Subtotal</span><span>{rs(subtotal)}</span></div>
-      <div className="ck-tr"><span>Delivery</span><span>{rs(DELIVERY)}</span></div>
+      <div className="ck-tr"><span>Delivery{moreFree > 0 && <small style={{ display: 'block', fontSize: 11.5, color: '#007a50', fontWeight: 700 }}>Add {rs(moreFree)} more for free delivery</small>}</span><span>{DELIVERY ? rs(DELIVERY) : 'FREE'}</span></div>
       {tip > 0 && <div className="ck-tr"><span>Delivery partner tip</span><span>{rs(tip)}</span></div>}
       {couponOff > 0 && <div className="ck-tr good"><span>Coupon {coupon?.code}</span><span>−{rs(couponOff)}</span></div>}
       {methodOff > 0 && <div className="ck-tr good"><span>{method.name} offer</span><span>−{rs(methodOff)}</span></div>}

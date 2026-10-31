@@ -14,7 +14,6 @@ export const PRODUCTS = []
 
 export const getProduct = (id) => PRODUCTS.find(p => p.id === Number(id))
 
-export const DELIVERY = 5.00
 
 // Backend product -> the shape the UI components already use
 export function toUiProduct(p) {

@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react'
 // cat -> button click panna Home la entha category open aagum (categories.js la irukkura id)
 const BANNERS = [
   { id:1, tag:'FRESH TODAY', title:'Fresh Fruits & Veggies', sub:'Farm-fresh picks, up to 30% off',           cta:'Shop Fruits',  cat:'fruits',   img:fruits },
-  { id:2, tag:'FREE DELIVERY', title:'Dairy & Eggs',         sub:'Milk, curd, eggs & more. Free delivery over ₹200', cta:'Shop Dairy',   cat:'dairy',    img:Egg },
+  { id:2, tag:'FREE DELIVERY', title:'Dairy & Eggs',         sub:'Milk, curd, eggs & more. Fresh every morning', cta:'Shop Dairy',   cat:'dairy',    img:Egg },
   { id:3, tag:'NEW ARRIVALS', title:'Snacks & Drinks',       sub:'Chips, cold drinks & munchies, new every week',   cta:'Shop Snacks',  cat:'snacks',   img:cool },
 ]
 

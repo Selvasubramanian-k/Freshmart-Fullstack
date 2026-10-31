@@ -171,6 +171,14 @@ async def mark_item(picker: dict, order_id: str, data: PickItemIn) -> dict:
     return await order_detail(picker, order_id)
 
 
+async def next_bag_tag(store_id) -> str:
+    """B-01, B-02 ... per store per day (India time). Used by the picker and by the store admin's "Packed"."""
+    day = now_utc().astimezone(timezone(timedelta(minutes=330))).strftime("%Y%m%d")
+    counter = await get_db().counters.find_one_and_update({"_id": f"bags:{store_id}:{day}"}, {"$inc": {"n": 1}},
+                                                          upsert=True, return_document=ReturnDocument.AFTER)
+    return f"B-{counter['n']:02d}"
+
+
 async def pack(picker: dict, order_id: str, data: BagsIn) -> dict:
     o, store = await _order(picker, order_id)
     db = get_db()
@@ -184,11 +192,43 @@ async def pack(picker: dict, order_id: str, data: BagsIn) -> dict:
     if waiting:
         raise HTTPException(status.HTTP_409_CONFLICT, "Still waiting for: " + ", ".join(waiting))
     now = now_utc()
-    day = now.astimezone(timezone(timedelta(minutes=330))).strftime("%Y%m%d")
-    counter = await db.counters.find_one_and_update({"_id": f"bags:{store['_id']}:{day}"}, {"$inc": {"n": 1}},
-                                                    upsert=True, return_document=ReturnDocument.AFTER)
-    tag = f"B-{counter['n']:02d}"
+    tag = await next_bag_tag(store["_id"])
     await db.orders.update_one({"_id": o["_id"]}, {
         "$set": {"status": "packed", "updated_at": now, "pick.bags": data.bags, "pick.bag_tag": tag, "pick.packed_at": now},
         "$push": {"status_history": {"status": "packed", "at": now, "note": f"Packed by {picker.get('name')} · {data.bags} bag{'s' if data.bags > 1 else ''} · {tag}"}}})
     return await order_detail(picker, order_id)
+
+
+# ---------------- history: who packed what ----------------
+RANGES = {"today": (0, 1), "yesterday": (1, 1), "week": (6, 7)}   # (days back from today, days long)
+
+
+async def history(picker: dict, rng: str = "today", who: str = "all", tz_minutes: int = 330) -> dict:
+    store = await _store_of(picker)
+    back, length = RANGES.get(rng, RANGES["today"])
+    tz = timezone(timedelta(minutes=tz_minutes))
+    start_local = now_utc().astimezone(tz).replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=back)
+    start, end = start_local.astimezone(timezone.utc), (start_local + timedelta(days=length)).astimezone(timezone.utc)
+    docs = await get_db().orders.find({"store_id": store["_id"], "pick.packed_at": {"$gte": start, "$lt": end}}
+                                      ).sort("pick.packed_at", -1).to_list(500)
+    board: dict[str, int] = {}
+    for o in docs:
+        name = (o.get("pick") or {}).get("by_name") or "Store"
+        board[name] = board.get(name, 0) + 1
+    if who == "me":
+        docs = [o for o in docs if str((o.get("pick") or {}).get("by")) == picker["id"]]
+    mins = [(_aware(o["pick"]["packed_at"]) - _aware(o["pick"]["started_at"])).total_seconds() / 60
+            for o in docs if o["pick"].get("started_at")]
+    return serialize({
+        "range": rng, "who": who,
+        "orders": sum(1 for o in docs if o["status"] != "cancelled"),
+        "items": sum(i["quantity"] for o in docs for i in o["items"]),
+        "avg_minutes": round(sum(mins) / len(mins), 1) if mins else None,
+        "board": [{"name": n, "orders": c} for n, c in sorted(board.items(), key=lambda kv: -kv[1])],
+        "list": [{
+            "id": o["_id"], "order_number": o["order_number"], "bag_tag": o["pick"].get("bag_tag"),
+            "bags": o["pick"].get("bags"), "items": sum(i["quantity"] for i in o["items"]),
+            "picked_by": o["pick"].get("by_name") or "Store", "packed_at": o["pick"]["packed_at"],
+            "status": o["status"], "mine": str(o["pick"].get("by")) == picker["id"],
+        } for o in docs],
+    })

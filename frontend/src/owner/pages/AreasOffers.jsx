@@ -50,6 +50,59 @@ function NewOffer({ onSaved, onClose }) {
   )
 }
 
+const FIELDS = [
+  ['delivery_fee', 'Customer pays for delivery (₹)'],
+  ['free_delivery_above', 'Free delivery for orders above (₹)'],
+  ['rider_base_fee', 'Rider gets per delivery (₹)'],
+  ['rider_per_km', 'Rider gets per km (₹)'],
+]
+
+function DeliveryCharges() {
+  const [f, setF] = useState(null)
+  const [saved, setSaved] = useState(null)
+  const [msg, setMsg] = useState('')
+  const [error, setError] = useState('')
+  useEffect(() => {
+    api.get('/api/owner/delivery-settings').then((d) => { const v = Object.fromEntries(Object.entries(d).map(([k, x]) => [k, String(x)])); setF(v); setSaved(v) })
+      .catch((e) => setError(e.message))
+  }, [])
+  if (!f) return <section className="ad-card"><p className="ad-muted">{error || 'Loading…'}</p></section>
+  const n = (k) => Number(f[k] || 0)
+  const ex = (km, tip) => n('rider_base_fee') + Math.min(km, n('rider_max_km_pay')) * n('rider_per_km') + tip
+  const custFee = (order) => (order >= n('free_delivery_above') ? 0 : n('delivery_fee'))
+  const changed = JSON.stringify(f) !== JSON.stringify(saved)
+  const save = async () => {
+    setError(''); setMsg('')
+    try {
+      const d = await api.put('/api/owner/delivery-settings', Object.fromEntries(Object.entries(f).map(([k, v]) => [k, Number(v || 0)])))
+      const v = Object.fromEntries(Object.entries(d).map(([k, x]) => [k, String(x)])); setF(v); setSaved(v); setMsg('Saved. New orders use these charges.')
+    } catch (e) { setError(e.message) }
+  }
+  return (
+    <section className="ad-card">
+      <div className="ad-card-head"><h2>Delivery charges</h2><span className="ad-muted ad-small">for every store</span></div>
+      <div className="ad-form">
+        {FIELDS.map(([k, label]) => (
+          <label key={k} className="ad-field">{label}
+            <input className="ad-input" inputMode="decimal" value={f[k]} onChange={(e) => { setMsg(''); setF((s) => ({ ...s, [k]: e.target.value.replace(/[^\d.]/g, '').slice(0, 7) })) }} />
+          </label>
+        ))}
+        <label className="ad-field">Pay km up to (max)<input className="ad-input" inputMode="decimal" value={f.rider_max_km_pay} onChange={(e) => setF((s) => ({ ...s, rider_max_km_pay: e.target.value.replace(/[^\d.]/g, '') }))} /></label>
+        <label className="ad-field">Km when location is not known<input className="ad-input" inputMode="decimal" value={f.rider_km_when_unknown} onChange={(e) => setF((s) => ({ ...s, rider_km_when_unknown: e.target.value.replace(/[^\d.]/g, '') }))} /></label>
+      </div>
+      <div className="ow-examples">
+        <b>Examples</b>
+        <span>₹300 order, 2 km, ₹10 tip → customer pays ₹{custFee(300)} delivery · rider gets ₹{Math.round(ex(2, 10))}</span>
+        <span>₹600 order, 4 km, no tip → customer pays ₹{custFee(600)} delivery · rider gets ₹{Math.round(ex(4, 0))}</span>
+        <span className="ad-muted">The gap between what the customer pays and what the rider gets comes from your commission.</span>
+      </div>
+      {error && <p className="ad-error" role="alert">{error}</p>}
+      {msg && <p className="ad-od-note" style={{ background: '#e6f4ee', color: '#005c3c' }}>{msg}</p>}
+      <div className="ad-form-actions"><button className="ad-btn" disabled={!changed} onClick={save}>Save charges</button></div>
+    </section>
+  )
+}
+
 export default function AreasOffers() {
   const [areas, setAreas] = useState(null)
   const [coupons, setCoupons] = useState(null)
@@ -72,7 +125,7 @@ export default function AreasOffers() {
 
   return (
     <>
-      <PageHead title="Areas & offers" sub="Where FreshMart delivers, and offers that work on every store.">
+      <PageHead title="Areas, offers & delivery" sub="Where FreshMart delivers, offers for every store, and what customers pay and riders earn for delivery.">
         <button className="ad-btn" onClick={() => setAdding(true)}>+ New offer</button>
       </PageHead>
       <ErrorNote>{error}</ErrorNote>
@@ -111,6 +164,7 @@ export default function AreasOffers() {
           )}
         </section>
       </div>
+      <DeliveryCharges />
       {adding && <NewOffer onClose={() => setAdding(false)} onSaved={(c) => { setCoupons((xs) => [c, ...(xs || [])]); setAdding(false) }} />}
     </>
   )

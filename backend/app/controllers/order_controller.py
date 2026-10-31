@@ -7,7 +7,7 @@ from fastapi import HTTPException, status
 
 from app.controllers.store_controller import get_admin_store_doc
 from app.database import get_db
-from app.utils.platform import commission_pct
+from app.utils.platform import commission_pct, customer_delivery_fee, get_platform, rider_pay
 from app.models.order import (
     ALLOWED_TRANSITIONS, CUSTOMER_CANCELLABLE, CancelRequest, OrderCreate, OrderStatusUpdate,
 )
@@ -74,7 +74,8 @@ async def place_order(customer: dict, data: OrderCreate) -> dict:
     if data.payment_method.value == "card" and not data.card:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Card details are required")
 
-    bill = compute_bill(subtotal, data.payment_method.value, data.tip, coupon_off)
+    plat = await get_platform()
+    bill = compute_bill(subtotal, data.payment_method.value, data.tip, coupon_off, customer_delivery_fee(plat, subtotal))
 
     # ---- reserve stock atomically (rollback on failure) ----
     reserved: list[tuple[int, int]] = []
@@ -145,6 +146,7 @@ async def place_order(customer: dict, data: OrderCreate) -> dict:
             "delivery_code": f"{secrets.randbelow(10000):04d}",
             "partner": None,          # filled when a delivery partner accepts
             "rider_location": None,
+            "rider_pay": rider_pay(plat, stores[sid], data.address.model_dump(), part["tip"]),
             "created_at": now,
             "updated_at": now,
         }
@@ -250,6 +252,12 @@ async def update_order_status(admin: dict, order_id: str, data: OrderStatusUpdat
     else:
         now = now_utc()
         updates = {"status": new, "updated_at": now}
+        if new == "packed" and not (order.get("pick") or {}).get("bag_tag"):
+            from app.controllers.picker_controller import next_bag_tag
+            updates.update({"pick.bag_tag": await next_bag_tag(store["_id"]), "pick.packed_at": now,
+                            "pick.by_name": (order.get("pick") or {}).get("by_name") or admin.get("name") or "Store"})
+            if not (order.get("pick") or {}).get("by"):
+                updates["pick.by"] = None
         if new == "delivered":
             updates["delivered_at"] = now
             if order["payment"]["method"] == "cod":

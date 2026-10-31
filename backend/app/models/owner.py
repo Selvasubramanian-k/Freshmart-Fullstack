@@ -51,6 +51,15 @@ class CouponUpdate(BaseModel):
     min_order: float | None = Field(default=None, ge=0, le=100000)
 
 
+class DeliverySettings(BaseModel):
+    delivery_fee: float = Field(..., ge=0, le=200)            # customer pays
+    free_delivery_above: float = Field(..., ge=0, le=100000)  # 0 = always free
+    rider_base_fee: float = Field(..., ge=0, le=500)          # rider gets per delivery
+    rider_per_km: float = Field(..., ge=0, le=100)
+    rider_km_when_unknown: float = Field(default=3, ge=0, le=50)
+    rider_max_km_pay: float = Field(default=10, ge=1, le=100)
+
+
 class UserActive(BaseModel):
     is_active: bool
 

@@ -55,3 +55,11 @@ async def check_coupon(code: str, subtotal: float):
     except ValueError as e:
         raise HTTPException(400, str(e))
     return {"code": c, "off": off}
+
+
+@router.get("/delivery-fee")
+async def delivery_fee():
+    """What the customer pays for delivery (owner sets it in Areas & offers)."""
+    from app.utils.platform import get_platform
+    p = await get_platform()
+    return {"fee": p["delivery_fee"], "free_above": p["free_delivery_above"]}
