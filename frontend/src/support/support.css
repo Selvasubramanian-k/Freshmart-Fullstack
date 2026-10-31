@@ -83,3 +83,4 @@
   .su-chat { max-height: none; }
   .su-msg { max-width: 90%; }
 }
+.su-viewonly { margin: 0; padding: 12px 20px; background: #f7f8fa; border-top: 1px solid #e5e7eb; font-size: 13px; font-weight: 700; color: #4b5563; }

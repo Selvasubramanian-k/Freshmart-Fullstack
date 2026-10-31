@@ -26,7 +26,7 @@ function sla(t, now) {
   return [left >= 60 ? `${Math.round(left / 60)} h left` : `${left} min left`, left <= 3 ? 'red' : 'amber']
 }
 
-function Actions({ t, owner, run, busy }) {
+function Actions({ t, run, busy }) {
   const o = t.order
   const [amount, setAmount] = useState('')
   const [to, setTo] = useState('cash')
@@ -38,12 +38,8 @@ function Actions({ t, owner, run, busy }) {
   if (['resolved', 'rejected'].includes(t.status)) return null
   if (t.status === 'needs_approval') {
     return (
-      <div className="su-sec"><h3>WAITING FOR THE OWNER</h3>
-        <p className="su-small">{t.pending_refund.by} asked to refund {rs(t.pending_refund.amount)} ({t.pending_refund.to === 'cash' ? 'FreshMart wallet' : 'original payment'}).</p>
-        {owner && <>
-          <button className="su-btn green" disabled={busy} onClick={() => run('approve_refund')}>Approve refund</button>
-          <button className="su-btn ghost" disabled={busy} onClick={() => run('reject_refund')}>Say no</button>
-        </>}
+      <div className="su-sec"><h3>WAITING FOR THE STORE ADMIN</h3>
+        <p className="su-small">{t.pending_refund.by} asked to refund {rs(t.pending_refund.amount)} ({t.pending_refund.to === 'cash' ? 'FreshMart wallet' : 'original payment'}). The {t.store_name} admin approves it in Returns &amp; Complaints.</p>
       </div>
     )
   }
@@ -81,7 +77,7 @@ function Actions({ t, owner, run, busy }) {
         <button className="su-btn ghost" disabled={busy} onClick={() => run('resolve', { text: note || undefined })}><Check size={15} /> Solved</button>
         <button className="su-btn ghost" disabled={busy} onClick={() => run('reject', { text: note || undefined })}>Can’t accept</button>
       </div>
-      <p className="su-small">Refunds above ₹500 go to the FreshMart owner to approve.</p>
+      <p className="su-small">Refunds above ₹500 go to the store admin to approve.</p>
     </div>
   )
 }
@@ -116,7 +112,7 @@ function Detail({ id, owner, onChanged, onBack }) {
           <div><h2>{t.title}</h2><p>{t.customer_name} · #{t.order_number} · {t.store_name}</p></div>
           <div className="su-mh-acts">
             {t.customer_phone && <a className="su-btn ghost sm" href={`tel:+91${t.customer_phone}`}><Phone size={14} /> Call</a>}
-            {!['resolved', 'rejected'].includes(t.status) && (
+            {!owner && !['resolved', 'rejected'].includes(t.status) && (
               <button className="su-btn ghost sm" disabled={busy || t.escalated} onClick={() => run('escalate')}><Flag size={14} /> {t.escalated ? 'Escalated' : 'Escalate'}</button>
             )}
           </div>
@@ -131,13 +127,13 @@ function Detail({ id, owner, onChanged, onBack }) {
           {t.photos?.length > 0 && <div className="su-photos">{t.photos.map((p) => <a key={p} href={resolveImage(p)} target="_blank" rel="noreferrer"><img src={resolveImage(p)} alt="Customer photo" /></a>)}</div>}
         </div>
         {error && <p className="su-err" role="alert">{error}</p>}
-        <form className="su-reply" onSubmit={(e) => { e.preventDefault(); if (text.trim()) run('reply', { text: text.trim() }) }}>
+        {owner ? <p className="su-viewonly">View only. The store admin or the support team handles this ticket.</p> : <form className="su-reply" onSubmit={(e) => { e.preventDefault(); if (text.trim()) run('reply', { text: text.trim() }) }}>
           <div className="su-quick">{QUICK.map((q) => <button type="button" key={q} disabled={busy} onClick={() => run('reply', { text: q })}>{q}</button>)}</div>
           <div className="su-box">
             <input className="su-in" aria-label="Reply to the customer" placeholder="Type a reply to the customer (they get it by SMS and in the app)…" value={text} onChange={(e) => setText(e.target.value)} />
             <button className="su-btn" disabled={busy || !text.trim()}><Send size={15} /> Send</button>
           </div>
-        </form>
+        </form>}
       </section>
       <aside className="su-side">
         {o && (
@@ -155,8 +151,9 @@ function Detail({ id, owner, onChanged, onBack }) {
           <div className="su-kv"><span>Past refunds</span><b>{t.customer.refunds}</b></div>
           <div className="su-kv"><span>Wallet</span><b>{rs(t.customer.wallet)}</b></div>
         </div>
-        <Actions key={t.id + t.status} t={t} owner={owner} run={run} busy={busy} />
-        {['resolved', 'rejected'].includes(t.status) && <div className="su-done"><Check size={16} /> {t.status === 'resolved' ? 'Solved' : 'Closed'}. The customer got an SMS.</div>}
+        {!owner && <Actions key={t.id + t.status} t={t} run={run} busy={busy} />}
+        {owner && t.status === 'needs_approval' && <div className="su-sec"><h3>WAITING FOR THE STORE ADMIN</h3><p className="su-small">{t.pending_refund?.by} asked to refund {rs(t.pending_refund?.amount)}.</p></div>}
+        {['resolved', 'rejected'].includes(t.status) && <div className="su-done"><Check size={16} /> {t.status === 'resolved' ? 'Solved' : 'Closed'}{t.handled_by ? ` by ${t.handled_by}` : ''}. The customer got an SMS.</div>}
       </aside>
     </>
   )

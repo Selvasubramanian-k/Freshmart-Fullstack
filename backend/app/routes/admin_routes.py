@@ -1,4 +1,5 @@
 """Shop Owner / Store Admin APIs."""
+from pydantic import BaseModel, Field
 import secrets
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -20,6 +21,12 @@ from app.models.sale import SaleCreate
 from app.models.staff import StaffCreate, StaffUpdate
 from app.models.store import StoreAvailability, StoreUpdate
 from app.utils.helpers import now_utc
+
+
+class RefundDecision(BaseModel):
+    approve: bool
+    note: str | None = Field(default=None, max_length=200)
+
 
 router = APIRouter(prefix="/api/admin", tags=["Store admin"], dependencies=[Depends(require_admin)])
 
@@ -207,6 +214,13 @@ async def assign_order(order_id: str, data: AssignRequest, user: dict = Depends(
 @router.get("/complaints")
 async def list_complaints(status_filter: str | None = None, user: dict = Depends(require_admin)):
     return await complaint_controller.store_complaints(user, status_filter)
+
+
+@router.post("/complaints/{complaint_id}/refund-decision")
+async def refund_decision(complaint_id: str, data: RefundDecision, user: dict = Depends(require_admin)):
+    """Approve / refuse a big refund the support team asked for."""
+    from app.controllers.support_controller import store_refund_decision
+    return await store_refund_decision(user, complaint_id, data.approve, data.note)
 
 
 @router.patch("/complaints/{complaint_id}")

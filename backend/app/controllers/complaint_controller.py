@@ -143,12 +143,16 @@ async def respond_complaint(admin: dict, complaint_id: str, data: ComplaintRespo
     if not c:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Complaint not found")
     if c["status"] in ("resolved", "rejected", "cancelled"):
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "This request is already closed")
+        who = f" by {c['handled_by']}" if c.get("handled_by") else ""
+        raise HTTPException(status.HTTP_409_CONFLICT, f"This request was already closed{who}")
+    if c["status"] == "needs_approval":
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Use Approve refund / Say no on this request")
 
     if c.get("resolution"):
         await _respond_item_request(c, data)
     else:
         await _respond_simple(c, data)
+    await db.complaints.update_one({"_id": c["_id"]}, {"$set": {"handled_by": f"{admin.get('name') or 'Store'} (store)"}})
     return serialize(await db.complaints.find_one({"_id": c["_id"]}))
 
 

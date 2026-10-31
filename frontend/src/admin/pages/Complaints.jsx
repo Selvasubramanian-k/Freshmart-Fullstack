@@ -10,6 +10,38 @@ const C_STATUS = {
   in_progress: { label: 'Approved', tone: 'blue' },
   resolved:    { label: 'Resolved',    tone: 'green' },
   rejected:    { label: 'Rejected',    tone: 'red' },
+  needs_approval: { label: 'Needs your OK', tone: 'violet' },
+}
+// "Divya (support)" / "Selva (store)": who closed it. Admin and support both handle requests; first one wins.
+const Handled = ({ c }) => (c.handled_by ? <p className="ad-muted ad-small" style={{ margin: 0 }}>Handled by <b>{c.handled_by}</b>{c.updated_at ? ` · ${fmtDateTime(c.updated_at)}` : ''}</p> : null)
+
+// Support asked to refund more than the limit: this store's admin says yes / no
+function BigRefund({ c, onSaved }) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const p = c.pending_refund
+  const decide = async (approve) => {
+    setBusy(true); setError('')
+    try { onSaved(await api.post(`/api/admin/complaints/${c.id}/refund-decision`, { approve })) } catch (e) { setError(e.message) } finally { setBusy(false) }
+  }
+  return (
+    <div className="ad-card ad-complaint">
+      <div className="ad-card-head">
+        <div>
+          <h2>Refund needs your OK · {COMPLAINT_TYPES[c.type] || c.type} · <span className="mono">#{c.order_number}</span></h2>
+          <p className="ad-muted ad-small">{c.customer_name}{c.customer_phone ? ` · +91 ${c.customer_phone}` : ''} · {fmtDateTime(c.created_at)}</p>
+        </div>
+        <StatusBadge status={c.status} map={C_STATUS} />
+      </div>
+      {c.description && <p className="ad-quote">{c.description}</p>}
+      <p className="ad-reply"><b>{p.by}</b> wants to refund <b>{rs(p.amount)}</b> to the customer’s {p.to === 'cash' ? 'FreshMart wallet' : 'original payment'}. Refunds this big need the store’s OK.</p>
+      <ErrorNote>{error}</ErrorNote>
+      <div className="ad-form-actions">
+        <button className="ad-btn ghost danger" disabled={busy} onClick={() => decide(false)}>Say no</button>
+        <button className="ad-btn" disabled={busy} onClick={() => decide(true)}>Approve refund · {rs(p.amount)}</button>
+      </div>
+    </div>
+  )
 }
 const FILTERS = [['open', 'Needs action'], ['closed', 'Closed'], ['all', 'All']]
 
@@ -57,7 +89,7 @@ function ItemRequest({ c, onSaved }) {
       )}
 
       {closed ? (
-        c.response && <p className="ad-reply"><b>Your reply:</b> {c.response}</p>
+        <>{c.response && <p className="ad-reply"><b>Reply:</b> {c.response}</p>}<Handled c={c} /></>
       ) : c.status === 'in_progress' ? (
         <>
           <p className="ad-reply"><b>Approved.</b> {c.exchange_order_number
@@ -86,6 +118,7 @@ function ItemRequest({ c, onSaved }) {
 }
 
 function ComplaintCard({ c, onSaved }) {
+  if (c.status === 'needs_approval' && c.pending_refund) return <BigRefund c={c} onSaved={onSaved} />
   if (c.resolution) return <ItemRequest c={c} onSaved={onSaved} />
   return <SimpleComplaint c={c} onSaved={onSaved} />
 }
@@ -117,7 +150,7 @@ function SimpleComplaint({ c, onSaved }) {
       <p className="ad-quote">{c.description}</p>
 
       {closed ? (
-        c.response && <p className="ad-reply"><b>Your reply:</b> {c.response}</p>
+        <>{c.response && <p className="ad-reply"><b>Reply:</b> {c.response}</p>}<Handled c={c} /></>
       ) : (
         <>
           <textarea className="ad-input" rows={2} placeholder={isReturn ? 'e.g. Return approved, refund in 3-5 days' : 'Reply to the customer'}
@@ -143,12 +176,12 @@ export default function Complaints() {
   useEffect(() => { load() }, [load])
 
   const list = useMemo(() => (items || []).filter(c =>
-    filter === 'all' ? true : filter === 'open' ? ['open', 'in_progress'].includes(c.status) : ['resolved', 'rejected'].includes(c.status)
+    filter === 'all' ? true : filter === 'open' ? ['open', 'in_progress', 'needs_approval'].includes(c.status) : ['resolved', 'rejected'].includes(c.status)
   ), [items, filter])
 
   return (
     <>
-      <PageHead title="Returns & Complaints" sub="Refunds go out when you approve. Approving an exchange sends a free replacement order to delivery partners." />
+      <PageHead title="Returns & Complaints" sub="You and the FreshMart support team both handle these. Whoever acts first closes it, and the other sees who did. Big refunds from support wait for your OK here." />
       <div className="ad-tabs">
         {FILTERS.map(([id, label]) => (
           <button key={id} className={`ad-tab ${filter === id ? 'on' : ''}`} onClick={() => setFilter(id)}>{label}</button>

@@ -23,7 +23,6 @@ export default function Overview() {
     try { await fn(); await load() } catch (e) { setError(e.message) } finally { setBusy('') }
   }
   const approveStore = (n, yes) => run(n.id, () => api.patch(`/api/owner/stores/${n.id}`, { approve: yes }))
-  const refund = (n, yes) => run(n.id, () => api.post(`/api/support/tickets/${n.id}/action`, { action: yes ? 'approve_refund' : 'reject_refund' }))
 
   if (!d) return <><PageHead title={`${greeting()}`} sub="Loading the marketplace…" /><ErrorNote>{error}</ErrorNote></>
   const change = d.sales_change_pct
@@ -56,7 +55,7 @@ export default function Overview() {
 
         <section className="ad-card">
           <div className="ad-card-head"><h2>Needs you</h2><span className="ad-muted ad-small">{d.needs.length ? `${d.needs.length} waiting` : 'All clear'}</span></div>
-          {d.needs.length === 0 && <p className="ad-muted ad-small" style={{ margin: 0 }}>Nothing waiting. New store requests, big refunds and escalated tickets show up here.</p>}
+          {d.needs.length === 0 && <p className="ad-muted ad-small" style={{ margin: 0 }}>Nothing waiting. New store requests show up here. You can also watch big refunds and escalated tickets (the store admin and support team handle those).</p>}
           <div className="ow-needs">
             {d.needs.map((n) => (
               <div key={n.id} className={`ow-need ${n.kind === 'ticket' && !n.approval ? 'red' : ''}`}>
@@ -65,11 +64,7 @@ export default function Overview() {
                   <button className="ad-btn sm" disabled={busy === n.id} onClick={() => approveStore(n, true)}>Approve</button>
                   <button className="ad-btn ghost sm" disabled={busy === n.id} onClick={() => approveStore(n, false)}>Reject</button>
                 </>}
-                {n.approval && <>
-                  <button className="ad-btn sm" disabled={busy === n.id} onClick={() => refund(n, true)}>Approve refund</button>
-                  <button className="ad-btn ghost sm" disabled={busy === n.id} onClick={() => refund(n, false)}>Say no</button>
-                </>}
-                {n.kind === 'ticket' && !n.approval && <button className="ad-btn ghost sm" onClick={() => navigate(`/support?ticket=${n.id}`)}>Open</button>}
+                {n.kind === 'ticket' && <button className="ad-btn ghost sm" onClick={() => navigate(`/support?ticket=${n.id}`)}>Open</button>}
               </div>
             ))}
           </div>

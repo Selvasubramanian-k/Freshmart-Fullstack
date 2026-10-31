@@ -112,6 +112,7 @@ async def ticket_detail(ticket_id: str) -> dict:
         **_ticket_row(c), "description": c.get("description"), "photos": c.get("photos", []),
         "items": c.get("items", []), "resolution": c.get("resolution"), "pending_refund": c.get("pending_refund"),
         "substitute": c.get("substitute"), "missing": c.get("missing"), "messages": msgs,
+        "handled_by": c.get("handled_by"),
         "order": {
             "id": order.get("_id"), "number": order.get("order_number"), "status": order.get("status"),
             "items": [{"name": i["name"], "unit": i.get("unit", ""), "quantity": i["quantity"], "line_total": i["line_total"],
@@ -156,14 +157,17 @@ async def _do_refund(c: dict, order: dict, amount: float, to: str, by: str) -> s
 
 
 async def act(user: dict, ticket_id: str, data: TicketActionIn) -> dict:
+    """Support team acts on any store's ticket. The FreshMart owner only watches (read-only).
+    Refunds above the limit wait for that store's admin (store_refund_decision)."""
+    if user["role"] == "superadmin":
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "The FreshMart owner can only view tickets. The store admin or support team handles them.")
     db = get_db()
     c = await _ticket(ticket_id)
-    by = user.get("name") or ("FreshMart owner" if user["role"] == "superadmin" else "Support")
-    owner = user["role"] == "superadmin"
+    by = f"{user.get('name') or 'Support'} (support)"
     a = data.action
     closed = c["status"] in ("resolved", "rejected", "cancelled")
     if closed and a not in (TicketAction.REPLY,):
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "This ticket is already closed")
+        raise HTTPException(status.HTTP_409_CONFLICT, "Already closed" + (f" by {c['handled_by']}" if c.get("handled_by") else ""))
     order = await db.orders.find_one({"_id": c["order_id"]}) or {}
 
     if a == TicketAction.REPLY:
@@ -183,28 +187,17 @@ async def act(user: dict, ticket_id: str, data: TicketActionIn) -> dict:
         if amount <= 0:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "Enter the refund amount")
         limit = (await get_platform())["refund_approval_above"]
-        if amount > limit and not owner:
+        if amount > limit:
             await db.complaints.update_one({"_id": c["_id"]}, {
                 "$set": {"status": "needs_approval", "updated_at": now_utc(),
                          "pending_refund": {"amount": amount, "to": data.to.value, "by": by, "at": now_utc()}},
-                "$push": {"history": _hist("needs_approval", f"{by} asked to refund ₹{amount:g}. Waiting for the FreshMart owner.", by)}})
+                "$push": {"history": _hist("needs_approval", f"{by} asked to refund ₹{amount:g}. Waiting for the store admin to approve.", by)}})
         else:
             note = await _do_refund(c, order, amount, data.to.value, by)
             await _close(c, "resolved", note, by)
 
     elif a in (TicketAction.APPROVE_REFUND, TicketAction.REJECT_REFUND):
-        if not owner:
-            raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the FreshMart owner can approve big refunds")
-        p = c.get("pending_refund")
-        if c["status"] != "needs_approval" or not p:
-            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Nothing is waiting for approval")
-        if a == TicketAction.APPROVE_REFUND:
-            note = await _do_refund(c, order, p["amount"], p["to"], by)
-            await _close(c, "resolved", note, by)
-        else:
-            await db.complaints.update_one({"_id": c["_id"]}, {"$set": {"status": "in_progress", "updated_at": now_utc()},
-                                                               "$unset": {"pending_refund": ""},
-                                                               "$push": {"history": _hist("in_progress", f"Owner said no to the ₹{p['amount']:g} refund" + (f": {data.text}" if data.text else ""), by)}})
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Big refunds are approved by the store admin (Returns & Complaints)")
 
     elif a == TicketAction.CANCEL_ORDER:
         if order.get("status") not in LIVE:
@@ -310,3 +303,26 @@ async def counts() -> dict:
     return {"open": await db.complaints.count_documents({"status": {"$in": OPEN}}),
             "needs_approval": await db.complaints.count_documents({"status": "needs_approval"})}
 
+
+
+async def store_refund_decision(admin: dict, ticket_id: str, approve: bool, note: str | None = None) -> dict:
+    """Store admin approves / refuses a big refund the support team asked for (their store only)."""
+    from app.controllers.store_controller import get_admin_store_doc
+    store = await get_admin_store_doc(admin)
+    db = get_db()
+    c = await _ticket(ticket_id)
+    if c["store_id"] != store["_id"]:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Request not found")
+    p = c.get("pending_refund")
+    if c["status"] != "needs_approval" or not p:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Nothing is waiting for approval")
+    by = f"{admin.get('name') or 'Store'} (store)"
+    if approve:
+        order = await db.orders.find_one({"_id": c["order_id"]}) or {}
+        msg = await _do_refund(c, order, p["amount"], p["to"], by)
+        await _close(c, "resolved", msg, by)
+    else:
+        await db.complaints.update_one({"_id": c["_id"]}, {
+            "$set": {"status": "in_progress", "updated_at": now_utc()}, "$unset": {"pending_refund": ""},
+            "$push": {"history": _hist("in_progress", f"{by} said no to the ₹{p['amount']:g} refund" + (f": {note}" if note else ""), by)}})
+    return serialize(await db.complaints.find_one({"_id": c["_id"]}))

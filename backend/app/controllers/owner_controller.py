@@ -71,7 +71,7 @@ async def overview(tz_minutes: int = 330) -> dict:
     for c in await db.complaints.find({"$or": [{"status": "needs_approval"}, {"escalated": True, "status": {"$in": OPEN_TICKETS}}]}
                                       ).sort("created_at", 1).to_list(20):
         if c["status"] == "needs_approval":
-            text = f"Refund ₹{c['pending_refund']['amount']:g} for #{c['order_number']} needs your OK"
+            text = f"Refund ₹{c['pending_refund']['amount']:g} for #{c['order_number']} · waiting for {c.get('store_name', 'the store')} admin"
         else:
             text = f"Escalated by support · #{c['order_number']} · {c.get('store_name', '')}"
         needs.append({"kind": "ticket", "id": str(c["_id"]), "title": c.get("customer_name") or "Customer",
